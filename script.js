@@ -123,19 +123,11 @@ class AlgorithmTracer {
 
     extractVariables(command) {
         const variables = new Set();
-        // Regex to find words that are not keywords or numbers, and are likely variable names
-        const varRegex = /\b(?!step-|start|stop|print|read|if|goto|true|false|\d+\b)([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
-        let match;
 
         // For assignment statements: VarName = Expression
         const assignmentMatch = command.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$/);
         if (assignmentMatch) {
             variables.add(assignmentMatch[1]);
-            // Also scan the expression part for variables
-            let expr = assignmentMatch[2];
-            while ((match = varRegex.exec(expr)) !== null) {
-                variables.add(match[1]);
-            }
         }
 
         // For read statements: read VarName
@@ -143,26 +135,6 @@ class AlgorithmTracer {
         if (readMatch) {
             variables.add(readMatch[1]);
         }
-
-        // For print statements: print Expression
-        const printMatch = command.match(/^print\s+(.*)$/);
-        if (printMatch) {
-            let expr = printMatch[1];
-            while ((match = varRegex.exec(expr)) !== null) {
-                variables.add(match[1]);
-            }
-        }
-
-        // For if conditions: if Condition
-        const ifMatch = command.match(/^if\s+(.*)$/);
-        if (ifMatch) {
-            let condition = ifMatch[1];
-            while ((match = varRegex.exec(condition)) !== null) {
-                variables.add(match[1]);
-            }
-        }
-
-        // For goto statements, no variables
 
         return variables;
     }
@@ -204,7 +176,7 @@ class AlgorithmTracer {
         this.executionHistory = [];
         this.isWaitingForInput = false;
         this.traceData = [];
-        this.variableColumns.clear();
+
         
         this.updateDisplay();
     }
