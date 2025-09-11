@@ -11,6 +11,9 @@ class AlgorithmTracer {
         this.variableColumns = new Set();
         this.codeLineElements = []; // Track code line elements for highlighting
         this.currentExecutingSubCommand = undefined; // Track current sub-command in if blocks
+        this.isExecutingIfBlock = false; // Track if we're executing an if block
+        this.ifBlockCommands = []; // Store remaining if block commands to execute
+        this.currentIfStep = null; // Store the current if step number
         
         this.initializeElements();
         this.attachEventListeners();
@@ -217,7 +220,9 @@ class AlgorithmTracer {
         this.traceData = [];
         this.codeLineElements = [];
         this.currentExecutingSubCommand = undefined;
-
+        this.isExecutingIfBlock = false;
+        this.ifBlockCommands = [];
+        this.currentIfStep = null;
         
         this.updateDisplay();
     }
@@ -363,7 +368,11 @@ class AlgorithmTracer {
 
     updateButtons() {
         this.prevStepBtn.disabled = this.executionHistory.length === 0;
-        this.nextStepBtn.disabled = this.isWaitingForInput || this.currentStep >= this.algorithm.length;
+        
+        // Next button is disabled if waiting for input or if we've reached the end
+        // (unless we're in an if block with more commands to execute)
+        this.nextStepBtn.disabled = this.isWaitingForInput || 
+            (!this.isExecutingIfBlock && this.currentStep >= this.algorithm.length);
         
         if (this.isWaitingForInput) {
             this.consoleInputContainer.style.display = "flex";
@@ -379,7 +388,11 @@ class AlgorithmTracer {
             variables: new Map(this.variables),
             consoleOutput: this.consoleOutput,
             traceData: [...this.traceData],
-            variableColumns: new Set(this.variableColumns)
+            variableColumns: new Set(this.variableColumns),
+            isExecutingIfBlock: this.isExecutingIfBlock,
+            ifBlockCommands: [...this.ifBlockCommands],
+            currentIfStep: this.currentIfStep,
+            currentExecutingSubCommand: this.currentExecutingSubCommand
         });
     }
 
@@ -398,6 +411,12 @@ class AlgorithmTracer {
     }
 
     executeStep() {
+        // Check if we're executing an if block
+        if (this.isExecutingIfBlock && this.ifBlockCommands.length > 0) {
+            this.executeIfSubCommand();
+            return;
+        }
+        
         const step = this.algorithm[this.currentStep];
         
         switch (step.type) {
@@ -476,49 +495,77 @@ class AlgorithmTracer {
         const conditionResult = this.evaluateCondition(step.condition);
         
         if (conditionResult) {
-            // Execute if block
-            let subStepIndex = 0;
-            for (const subCommand of step.ifBlock) {
-                const subStepLabel = `${step.step}${String.fromCharCode(97 + subStepIndex)}`;
-                
-                // Check if subCommand is empty after trimming, if so, skip it
-                if (!subCommand.trim()) continue;
-
-                // Set current executing sub-command for highlighting
-                this.currentExecutingSubCommand = subStepIndex;
-                this.updateDisplay();
-
-                // The subCommand from ifBlock already has leading spaces trimmed by parseAlgorithm
-                // but we need to check its type and execute accordingly
-                const commandType = this.getCommandType(subCommand);
-
-                if (commandType === "goto") {
-                    this.executeGoto(subCommand);
-                    this.currentExecutingSubCommand = undefined;
-                    return; // Exit if block execution after goto
-                } else if (commandType === "assignment") {
-                    this.executeAssignment(subCommand, subStepLabel);
-                } else if (commandType === "print") {
-                    const printOutput = this.evaluateExpression(subCommand.substring(6).trim());
-                    this.consoleOutput += printOutput;
-                    this.addTraceRow(subStepLabel, printOutput, new Map());
-                } else if (commandType === "read") {
-                    const varName = subCommand.substring(5).trim();
-                    this.isWaitingForInput = true;
-                    this.waitingForVariable = varName;
-                    this.waitingStep = subStepLabel;
-                    return; // Wait for input, do not advance currentStep
-                } else {
-                    throw new Error(`Unsupported command in if block: ${subCommand}`);
-                }
-                
-                subStepIndex++;
-            }
+            // Set up for executing if block one command at a time
+            this.isExecutingIfBlock = true;
+            this.ifBlockCommands = [...step.ifBlock];
+            this.currentIfStep = step.step;
+            this.currentExecutingSubCommand = 0;
+        } else {
+            // Condition is false, skip to next step
+            this.currentStep++;
         }
         
-        // Clear sub-command tracking and advance to next step
-        this.currentExecutingSubCommand = undefined;
-        this.currentStep++;
+        this.updateDisplay();
+    }
+
+    executeIfSubCommand() {
+        if (this.ifBlockCommands.length === 0) {
+            // Finished executing if block
+            this.isExecutingIfBlock = false;
+            this.currentExecutingSubCommand = undefined;
+            this.currentIfStep = null;
+            this.currentStep++;
+            this.updateDisplay();
+            return;
+        }
+        
+        const subCommand = this.ifBlockCommands.shift();
+        const subStepLabel = `${this.currentIfStep}${String.fromCharCode(97 + this.currentExecutingSubCommand)}`;
+        
+        // Skip empty commands
+        if (!subCommand.trim()) {
+            this.currentExecutingSubCommand++;
+            this.executeIfSubCommand(); // Recursively execute next
+            return;
+        }
+        
+        const commandType = this.getCommandType(subCommand);
+        
+        try {
+            if (commandType === "goto") {
+                this.executeGoto(subCommand);
+                // Clear if block execution state after goto
+                this.isExecutingIfBlock = false;
+                this.ifBlockCommands = [];
+                this.currentExecutingSubCommand = undefined;
+                this.currentIfStep = null;
+            } else if (commandType === "assignment") {
+                this.executeAssignment(subCommand, subStepLabel);
+                this.currentExecutingSubCommand++;
+            } else if (commandType === "print") {
+                const printOutput = this.evaluateExpression(subCommand.substring(6).trim());
+                this.consoleOutput += printOutput;
+                this.addTraceRow(subStepLabel, printOutput, new Map());
+                this.currentExecutingSubCommand++;
+            } else if (commandType === "read") {
+                const varName = subCommand.substring(5).trim();
+                this.isWaitingForInput = true;
+                this.waitingForVariable = varName;
+                this.waitingStep = subStepLabel;
+                // Don't increment currentExecutingSubCommand here, will be done after input
+            } else {
+                throw new Error(`Unsupported command in if block: ${subCommand}`);
+            }
+        } catch (error) {
+            // On error, clear if block execution and rethrow
+            this.isExecutingIfBlock = false;
+            this.ifBlockCommands = [];
+            this.currentExecutingSubCommand = undefined;
+            this.currentIfStep = null;
+            throw error;
+        }
+        
+        this.updateDisplay();
     }
 
     executeGoto(command) {
@@ -717,7 +764,14 @@ class AlgorithmTracer {
         this.isWaitingForInput = false;
         this.waitingForVariable = null;
         this.waitingStep = null;
-        this.currentStep++; // Advance step after input
+        
+        // Check if we were in an if block
+        if (this.isExecutingIfBlock) {
+            this.currentExecutingSubCommand++; // Move to next sub-command
+        } else {
+            this.currentStep++; // Advance step after input for normal commands
+        }
+        
         this.updateDisplay();
     }
 
@@ -738,6 +792,10 @@ class AlgorithmTracer {
             this.consoleOutput = prevState.consoleOutput;
             this.traceData = prevState.traceData;
             this.variableColumns = prevState.variableColumns;
+            this.isExecutingIfBlock = prevState.isExecutingIfBlock;
+            this.ifBlockCommands = prevState.ifBlockCommands;
+            this.currentIfStep = prevState.currentIfStep;
+            this.currentExecutingSubCommand = prevState.currentExecutingSubCommand;
             this.isWaitingForInput = false; // Reset waiting state
             this.updateDisplay();
         }
@@ -757,5 +815,3 @@ class AlgorithmTracer {
 document.addEventListener("DOMContentLoaded", () => {
     new AlgorithmTracer();
 });
-
-
