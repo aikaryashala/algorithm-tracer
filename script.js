@@ -79,17 +79,17 @@ class AlgorithmTracer {
 
             if (!trimmedLine) continue; // Skip empty lines
             
+            // Check if this is an indented line (should be handled by previous if block)
+            if (line.startsWith("  ") || line.startsWith("\t")) {
+                // This is an indented line that wasn't consumed by an if block
+                // This means it's either orphaned or there's a parsing issue
+                throw new Error(`Unexpected indented line at line ${i + 1}: ${line.trim()}`);
+            }
+            
             const stepMatch = trimmedLine.match(/^step-(\d+):\s*(.+)$/);
             
             if (!stepMatch) {
-                // This line is not a step, check if it's an indented line within an if block
-                // If it's not indented, then it's an invalid format
-                if (!line.startsWith("  ")) {
-                    throw new Error(`Invalid step format at line ${i + 1}: ${line}`);
-                }
-                // If it's indented, it should have been handled by the previous if block
-                // This means it's an indented line not preceded by an if statement, which is an error
-                throw new Error(`Unexpected indented line at line ${i + 1}: ${line}`);
+                throw new Error(`Invalid step format at line ${i + 1}: ${line}`);
             }
             
             const stepNumber = parseInt(stepMatch[1]);
@@ -100,16 +100,32 @@ class AlgorithmTracer {
 
             // Parse if statements with indented blocks
             if (command.startsWith("if ")) {
-                const condition = command.substring(3).trim();
+                let condition = command.substring(3).trim();
+                
+                // Remove trailing colon if present (support both "if condition" and "if condition:" syntax)
+                if (condition.endsWith(":")) {
+                    condition = condition.slice(0, -1).trim();
+                }
+                
                 const ifBlock = [];
                 
                 // Look for indented lines following the if statement
                 let j = i + 1;
-                while (j < lines.length && lines[j].startsWith("  ")) {
-                    const subCommand = lines[j].trim(); // Trim only leading spaces for sub-commands
-                    this.extractVariables(subCommand).forEach(v => allVariables.add(v));
-                    ifBlock.push(subCommand);
-                    j++;
+                while (j < lines.length) {
+                    const nextLine = lines[j];
+                    const nextTrimmed = nextLine.trim();
+                    
+                    // Check if this line is indented (part of the if block)
+                    if (nextLine.startsWith("  ") || nextLine.startsWith("\t")) {
+                        if (nextTrimmed) { // Only add non-empty indented lines
+                            this.extractVariables(nextTrimmed).forEach(v => allVariables.add(v));
+                            ifBlock.push(nextTrimmed);
+                        }
+                        j++;
+                    } else {
+                        // Not indented, end of if block
+                        break;
+                    }
                 }
                 
                 algorithm.push({
@@ -589,24 +605,53 @@ class AlgorithmTracer {
             i = j;
         }
 
-        // Evaluate tokens (simple left-to-right for +)
+        // Evaluate tokens (simple left-to-right evaluation)
         if (tokens.length === 0) return "";
 
         let result = this.getLiteralValue(tokens[0]);
 
         for (let k = 1; k < tokens.length; k++) {
             const operator = tokens[k];
-            if (operator === '+') {
+            if (['+', '-', '*', '/'].includes(operator)) {
                 if (k + 1 < tokens.length) {
                     const nextOperand = this.getLiteralValue(tokens[k + 1]);
-                    if (typeof result === 'string' || typeof nextOperand === 'string') {
-                        result = String(result) + String(nextOperand);
-                    } else {
-                        result = result + nextOperand;
+                    
+                    switch (operator) {
+                        case '+':
+                            if (typeof result === 'string' || typeof nextOperand === 'string') {
+                                result = String(result) + String(nextOperand);
+                            } else {
+                                result = result + nextOperand;
+                            }
+                            break;
+                        case '-':
+                            if (typeof result === 'number' && typeof nextOperand === 'number') {
+                                result = result - nextOperand;
+                            } else {
+                                throw new Error('Subtraction only works with numbers');
+                            }
+                            break;
+                        case '*':
+                            if (typeof result === 'number' && typeof nextOperand === 'number') {
+                                result = result * nextOperand;
+                            } else {
+                                throw new Error('Multiplication only works with numbers');
+                            }
+                            break;
+                        case '/':
+                            if (typeof result === 'number' && typeof nextOperand === 'number') {
+                                if (nextOperand === 0) {
+                                    throw new Error('Division by zero');
+                                }
+                                result = Math.floor(result / nextOperand); // Integer division
+                            } else {
+                                throw new Error('Division only works with numbers');
+                            }
+                            break;
                     }
                     k++; // Skip the operand as it's already processed
                 } else {
-                    throw new Error('Invalid expression: dangling + operator');
+                    throw new Error(`Invalid expression: dangling ${operator} operator`);
                 }
             } else {
                 throw new Error(`Unsupported operator in complex expression: ${operator}`);

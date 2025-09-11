@@ -31,6 +31,81 @@ A simple and modular web application for visualizing the step-by-step execution 
 - **Strings**: Text enclosed in double quotes
 - **Variables**: Auto-initialized on first use
 
+## Indentation Requirements for If Statements
+
+### Important: Dynamic Indentation Rules
+
+When writing if statements with indented blocks, the indentation must align properly with the if statement. The number of spaces required depends on the step number length.
+
+### Rule: Calculate Required Spaces
+The indented lines should align with the content AFTER the "if" keyword:
+1. Count the characters in `step-X: if` 
+2. Add 1 space for proper alignment
+3. Use that many spaces for all indented lines under that if statement
+
+### Examples:
+
+#### Example 1: Two-digit step number
+```
+step-10: if (Counter < Count):
+           print "hello"
+           Counter = Counter + 1
+```
+- The "if" part is: `step-10: if` (10 characters)
+- Required indentation: **11 spaces** before each indented line
+- Visual alignment: indented lines start at position 11
+
+#### Example 2: Single-digit step number  
+```
+step-6: if (Counter < Count):
+          print "hello"
+          Counter = Counter + 1
+```
+- The "if" part is: `step-6: if` (9 characters)
+- Required indentation: **10 spaces** before each indented line
+- Visual alignment: indented lines start at position 10
+
+#### Example 3: Three-digit step number
+```
+step-100: if (Counter < Count):
+             print "hello"
+             Counter = Counter + 1
+```
+- The "if" part is: `step-100: if` (12 characters)
+- Required indentation: **13 spaces** before each indented line
+- Visual alignment: indented lines start at position 13
+
+### Visual Alignment Guide:
+```
+step-10: if (Counter < Count):
+           ↑ indented lines start here (position 11)
+
+step-6: if (Counter < Count):
+          ↑ indented lines start here (position 10)
+
+step-100: if (Counter < Count):
+             ↑ indented lines start here (position 13)
+```
+
+### Common Mistakes:
+❌ **Wrong**: Using fixed 2-space indentation
+```
+step-10: if (Counter < Count):
+  print "hello"    # Only 2 spaces - INCORRECT
+```
+
+✅ **Correct**: Using dynamic indentation based on step number
+```
+step-10: if (Counter < Count):
+           print "hello"    # 11 spaces - CORRECT
+```
+
+### Why This Matters:
+- Ensures proper visual alignment of code
+- Makes algorithms more readable
+- Follows consistent indentation standards
+- Required for correct parsing by the application
+
 ## Usage
 
 1. Open `index.html` in Chrome browser
@@ -68,8 +143,8 @@ step-2: print "Enter your age: "
 step-3: read Age
 step-4: CanVote = "No"
 step-5: if Age >= 18
-  CanVote = "Yes"
-  print "You are eligible to vote!\n"
+         CanVote = "Yes"
+         print "You are eligible to vote!\n"
 step-6: print "Can vote status: " + CanVote + "\n"
 step-7: stop
 ```
@@ -81,9 +156,9 @@ step-2: print "Count from 1 to: "
 step-3: read Max
 step-4: Counter = 1
 step-5: if Counter <= Max
-  print Counter + " "
-  Counter = Counter + 1
-  goto step-5
+         print Counter + " "
+         Counter = Counter + 1
+         goto step-5
 step-6: print "\nDone!\n"
 step-7: stop
 ```
