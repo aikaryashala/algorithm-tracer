@@ -362,13 +362,24 @@ class AlgorithmTracer {
     }
 
     executeAssignment(command, stepNum) {
-        const parts = command.split(" = ");
-        if (parts.length !== 2) {
+        // Find the first unquoted '=' to split the variable name and expression
+        let eqIndex = -1;
+        let inQuote = false;
+        for (let i = 0; i < command.length; i++) {
+            if (command[i] === '"') {
+                inQuote = !inQuote;
+            } else if (command[i] === '=' && !inQuote) {
+                eqIndex = i;
+                break;
+            }
+        }
+
+        if (eqIndex === -1) {
             throw new Error(`Invalid assignment: ${command}`);
         }
         
-        const varName = parts[0].trim();
-        const expression = parts[1].trim();
+        const varName = command.substring(0, eqIndex).trim();
+        const expression = command.substring(eqIndex + 1).trim();
         const value = this.evaluateExpression(expression);
         
         this.variables.set(varName, value);
@@ -453,7 +464,6 @@ class AlgorithmTracer {
     evaluateExpression(expr) {
         expr = expr.trim();
 
-        // Tokenize the expression
         const tokens = [];
         let i = 0;
         while (i < expr.length) {
@@ -462,10 +472,9 @@ class AlgorithmTracer {
             // Handle string literals
             if (char === '"') {
                 let j = i + 1;
-                while (j < expr.length && expr[j] !== '"') {
-                    // Handle escaped quotes within string
-                    if (expr[j] === '\\' && j + 1 < expr.length) {
-                        j++; // Skip the escaped character
+                while (j < expr.length) {
+                    if (expr[j] === '"' && expr[j-1] !== '\\') { // Check for unescaped quote
+                        break;
                     }
                     j++;
                 }
@@ -478,7 +487,7 @@ class AlgorithmTracer {
             }
 
             // Handle operators
-            if (char === '+' || char === '-' || char === '*' || char === '/') {
+            if (['+', '-', '*', '/'].includes(char)) {
                 tokens.push(char);
                 i++;
                 continue;
@@ -492,9 +501,8 @@ class AlgorithmTracer {
 
             // Handle numbers and variable names
             let j = i;
-            while (j < expr.length && char !== '"' && char !== '+' && char !== '-' && char !== '*' && char !== '/' && char !== ' ') {
+            while (j < expr.length && !['"', '+', '-', '*', '/', ' '].includes(expr[j])) {
                 j++;
-                char = expr[j];
             }
             tokens.push(expr.substring(i, j));
             i = j;
@@ -520,7 +528,6 @@ class AlgorithmTracer {
                     throw new Error('Invalid expression: dangling + operator');
                 }
             } else {
-                // For now, only '+' is handled for multi-part expressions
                 throw new Error(`Unsupported operator in complex expression: ${operator}`);
             }
         }
@@ -531,7 +538,11 @@ class AlgorithmTracer {
         token = token.trim();
         // Handle string literals
         if (token.startsWith('"') && token.endsWith('"')) {
-            return token.substring(1, token.length - 1).replace(/\\n/g, '\n');
+            // Remove quotes and handle escaped newlines
+            let value = token.substring(1, token.length - 1);
+            value = value.replace(/\\n/g, '\n');
+            value = value.replace(/\\"/g, '"'); // Handle escaped double quotes
+            return value;
         }
         // Handle numeric literals
         const num = parseInt(token);
