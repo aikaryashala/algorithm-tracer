@@ -9,6 +9,8 @@ class AlgorithmTracer {
         this.isWaitingForInput = false;
         this.traceData = [];
         this.variableColumns = new Set();
+        this.codeLineElements = []; // Track code line elements for highlighting
+        this.currentExecutingSubCommand = undefined; // Track current sub-command in if blocks
         
         this.initializeElements();
         this.attachEventListeners();
@@ -67,16 +69,27 @@ class AlgorithmTracer {
     }
 
     parseAlgorithm(text) {
-         const lines = text.split("\n").map(line => line.trim()).filter(line => line);
+        const lines = text.split("\n").map(line => line.trimEnd()); // Keep leading spaces for indentation check
         const algorithm = [];
         const allVariables = new Set();
         
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
-            const stepMatch = line.match(/^step-(\d+):\s*(.+)$/);
+            const trimmedLine = line.trim();
+
+            if (!trimmedLine) continue; // Skip empty lines
+            
+            const stepMatch = trimmedLine.match(/^step-(\d+):\s*(.+)$/);
             
             if (!stepMatch) {
-                throw new Error(`Invalid step format at line ${i + 1}: ${line}`);
+                // This line is not a step, check if it's an indented line within an if block
+                // If it's not indented, then it's an invalid format
+                if (!line.startsWith("  ")) {
+                    throw new Error(`Invalid step format at line ${i + 1}: ${line}`);
+                }
+                // If it's indented, it should have been handled by the previous if block
+                // This means it's an indented line not preceded by an if statement, which is an error
+                throw new Error(`Unexpected indented line at line ${i + 1}: ${line}`);
             }
             
             const stepNumber = parseInt(stepMatch[1]);
@@ -93,7 +106,7 @@ class AlgorithmTracer {
                 // Look for indented lines following the if statement
                 let j = i + 1;
                 while (j < lines.length && lines[j].startsWith("  ")) {
-                    const subCommand = lines[j].substring(2).trim();
+                    const subCommand = lines[j].trim(); // Trim only leading spaces for sub-commands
                     this.extractVariables(subCommand).forEach(v => allVariables.add(v));
                     ifBlock.push(subCommand);
                     j++;
@@ -176,6 +189,8 @@ class AlgorithmTracer {
         this.executionHistory = [];
         this.isWaitingForInput = false;
         this.traceData = [];
+        this.codeLineElements = [];
+        this.currentExecutingSubCommand = undefined;
 
         
         this.updateDisplay();
@@ -183,12 +198,30 @@ class AlgorithmTracer {
 
     displayCode() {
         this.codeDisplay.innerHTML = "";
+        this.codeLineElements = []; // Track all code line elements for highlighting
+        
         this.algorithm.forEach((step, index) => {
             const lineEl = document.createElement("div");
             lineEl.className = "code-line";
             lineEl.textContent = step.originalLine;
             lineEl.dataset.stepIndex = index;
+            lineEl.dataset.lineType = "main";
             this.codeDisplay.appendChild(lineEl);
+            this.codeLineElements.push(lineEl);
+
+            // If it's an if statement, also display its indented block
+            if (step.type === "if" && step.ifBlock && step.ifBlock.length > 0) {
+                step.ifBlock.forEach((subCommand, subIndex) => {
+                    const subLineEl = document.createElement("div");
+                    subLineEl.className = "code-line indented"; // Add an 'indented' class for styling
+                    subLineEl.textContent = `  ${subCommand}`; // Add two spaces for visual indentation
+                    subLineEl.dataset.stepIndex = index;
+                    subLineEl.dataset.subIndex = subIndex;
+                    subLineEl.dataset.lineType = "sub";
+                    this.codeDisplay.appendChild(subLineEl);
+                    this.codeLineElements.push(subLineEl);
+                });
+            }
         });
     }
 
@@ -210,15 +243,41 @@ class AlgorithmTracer {
     }
 
     updateCodeHighlight() {
-        const lines = this.codeDisplay.querySelectorAll(".code-line");
-        lines.forEach((line, index) => {
+        // Reset all highlighting
+        this.codeLineElements.forEach(line => {
             line.classList.remove("current", "executed");
-            if (index < this.currentStep) {
+        });
+        
+        // Highlight executed and current lines
+        this.codeLineElements.forEach(line => {
+            const stepIndex = parseInt(line.dataset.stepIndex);
+            const lineType = line.dataset.lineType;
+            
+            if (stepIndex < this.currentStep) {
                 line.classList.add("executed");
-            } else if (index === this.currentStep) {
-                line.classList.add("current");
+            } else if (stepIndex === this.currentStep) {
+                if (lineType === "main") {
+                    line.classList.add("current");
+                }
             }
         });
+        
+        // Handle highlighting for currently executing if block sub-commands
+        if (this.currentExecutingSubCommand !== undefined) {
+            this.codeLineElements.forEach(line => {
+                const stepIndex = parseInt(line.dataset.stepIndex);
+                const subIndex = parseInt(line.dataset.subIndex);
+                const lineType = line.dataset.lineType;
+                
+                if (stepIndex === this.currentStep && lineType === "sub") {
+                    if (subIndex < this.currentExecutingSubCommand) {
+                        line.classList.add("executed");
+                    } else if (subIndex === this.currentExecutingSubCommand) {
+                        line.classList.add("current");
+                    }
+                }
+            });
+        }
     }
 
     updateTraceTable() {
@@ -396,21 +455,43 @@ class AlgorithmTracer {
             for (const subCommand of step.ifBlock) {
                 const subStepLabel = `${step.step}${String.fromCharCode(97 + subStepIndex)}`;
                 
-                if (subCommand.startsWith("goto ")) {
+                // Check if subCommand is empty after trimming, if so, skip it
+                if (!subCommand.trim()) continue;
+
+                // Set current executing sub-command for highlighting
+                this.currentExecutingSubCommand = subStepIndex;
+                this.updateDisplay();
+
+                // The subCommand from ifBlock already has leading spaces trimmed by parseAlgorithm
+                // but we need to check its type and execute accordingly
+                const commandType = this.getCommandType(subCommand);
+
+                if (commandType === "goto") {
                     this.executeGoto(subCommand);
-                    return;
-                } else if (subCommand.includes(" = ")) {
+                    this.currentExecutingSubCommand = undefined;
+                    return; // Exit if block execution after goto
+                } else if (commandType === "assignment") {
                     this.executeAssignment(subCommand, subStepLabel);
-                } else if (subCommand.startsWith("print ")) {
+                } else if (commandType === "print") {
                     const printOutput = this.evaluateExpression(subCommand.substring(6).trim());
                     this.consoleOutput += printOutput;
-                    this.addTraceRow(subStepLabel, printOutput, new Map(this.variables));
+                    this.addTraceRow(subStepLabel, printOutput, new Map());
+                } else if (commandType === "read") {
+                    const varName = subCommand.substring(5).trim();
+                    this.isWaitingForInput = true;
+                    this.waitingForVariable = varName;
+                    this.waitingStep = subStepLabel;
+                    return; // Wait for input, do not advance currentStep
+                } else {
+                    throw new Error(`Unsupported command in if block: ${subCommand}`);
                 }
                 
                 subStepIndex++;
             }
         }
         
+        // Clear sub-command tracking and advance to next step
+        this.currentExecutingSubCommand = undefined;
         this.currentStep++;
     }
 

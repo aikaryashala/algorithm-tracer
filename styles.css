@@ -113,6 +113,12 @@ header h1 {
     white-space: pre-wrap;
 }
 
+.code-line.indented {
+    margin-left: 20px;
+    background-color: #f8f9fa;
+    border-left: 2px solid #dee2e6;
+}
+
 .code-line.current {
     background-color: #fff3cd;
     border-left: 4px solid #ffc107;
