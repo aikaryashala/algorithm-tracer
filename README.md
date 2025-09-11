@@ -68,8 +68,8 @@ step-6: if (Counter < Count):
 #### Example 3: Three-digit step number
 ```
 step-100: if (Counter < Count):
-             print "hello"
-             Counter = Counter + 1
+            print "hello"
+            Counter = Counter + 1
 ```
 - The "if" part is: `step-100: if` (12 characters)
 - Required indentation: **13 spaces** before each indented line
@@ -143,8 +143,8 @@ step-2: print "Enter your age: "
 step-3: read Age
 step-4: CanVote = "No"
 step-5: if Age >= 18
-         CanVote = "Yes"
-         print "You are eligible to vote!\n"
+          CanVote = "Yes"
+          print "You are eligible to vote!\n"
 step-6: print "Can vote status: " + CanVote + "\n"
 step-7: stop
 ```
@@ -156,9 +156,9 @@ step-2: print "Count from 1 to: "
 step-3: read Max
 step-4: Counter = 1
 step-5: if Counter <= Max
-         print Counter + " "
-         Counter = Counter + 1
-         goto step-5
+          print Counter + " "
+          Counter = Counter + 1
+          goto step-5
 step-6: print "\nDone!\n"
 step-7: stop
 ```
@@ -181,6 +181,7 @@ algorithm-tracer/
 ├── index.html          # Main HTML file
 ├── styles.css          # CSS styling
 ├── script.js           # JavaScript application logic
+├── spec.md             # Application specification
 └── README.md           # This documentation
 ```
 
