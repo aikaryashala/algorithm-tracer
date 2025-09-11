@@ -242,10 +242,15 @@ class AlgorithmTracer {
 
             // If it's an if statement, also display its indented block
             if (step.type === "if" && step.ifBlock && step.ifBlock.length > 0) {
+                // Calculate proper indentation based on step number
+                // The indented lines should align with the space right after 'if'
+                const stepPrefix = `step-${step.step}: if`;
+                const indentationSpaces = ' '.repeat(stepPrefix.length);
+                
                 step.ifBlock.forEach((subCommand, subIndex) => {
                     const subLineEl = document.createElement("div");
-                    subLineEl.className = "code-line indented"; // Add an 'indented' class for styling
-                    subLineEl.textContent = `  ${subCommand}`; // Add two spaces for visual indentation
+                    subLineEl.className = "code-line";
+                    subLineEl.textContent = indentationSpaces + subCommand;
                     subLineEl.dataset.stepIndex = index;
                     subLineEl.dataset.subIndex = subIndex;
                     subLineEl.dataset.lineType = "sub";
