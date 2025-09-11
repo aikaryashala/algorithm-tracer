@@ -346,6 +346,14 @@ class AlgorithmTracer {
             
             tbody.appendChild(tr);
         });
+        
+        // Auto-scroll to the latest row in the table container
+        const tableContainer = document.querySelector(".table-container");
+        if (tableContainer) {
+            setTimeout(() => {
+                tableContainer.scrollTop = tableContainer.scrollHeight;
+            }, 0);
+        }
     }
 
     updateConsole() {
