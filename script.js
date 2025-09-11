@@ -276,21 +276,7 @@ class AlgorithmTracer {
     updateCodeHighlight() {
         // Reset all highlighting
         this.codeLineElements.forEach(line => {
-            line.classList.remove("current", "executed");
-        });
-        
-        // Highlight executed and current lines
-        this.codeLineElements.forEach(line => {
-            const stepIndex = parseInt(line.dataset.stepIndex);
-            const lineType = line.dataset.lineType;
-            
-            if (stepIndex < this.currentStep) {
-                line.classList.add("executed");
-            } else if (stepIndex === this.currentStep) {
-                if (lineType === "main") {
-                    line.classList.add("current");
-                }
-            }
+            line.classList.remove("current");
         });
         
         // Handle highlighting for currently executing if block sub-commands
@@ -300,12 +286,18 @@ class AlgorithmTracer {
                 const subIndex = parseInt(line.dataset.subIndex);
                 const lineType = line.dataset.lineType;
                 
-                if (stepIndex === this.currentStep && lineType === "sub") {
-                    if (subIndex < this.currentExecutingSubCommand) {
-                        line.classList.add("executed");
-                    } else if (subIndex === this.currentExecutingSubCommand) {
-                        line.classList.add("current");
-                    }
+                if (stepIndex === this.currentStep && lineType === "sub" && subIndex === this.currentExecutingSubCommand) {
+                    line.classList.add("current");
+                }
+            });
+        } else {
+            // Only highlight main line if we're not executing sub-commands
+            this.codeLineElements.forEach(line => {
+                const stepIndex = parseInt(line.dataset.stepIndex);
+                const lineType = line.dataset.lineType;
+                
+                if (stepIndex === this.currentStep && lineType === "main") {
+                    line.classList.add("current");
                 }
             });
         }
