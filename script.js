@@ -67,8 +67,9 @@ class AlgorithmTracer {
     }
 
     parseAlgorithm(text) {
-        const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+         const lines = text.split('\n').map(line => line.trim()).filter(line => line);
         const algorithm = [];
+        const allVariables = new Set();
         
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -81,6 +82,9 @@ class AlgorithmTracer {
             const stepNumber = parseInt(stepMatch[1]);
             const command = stepMatch[2].trim();
             
+            // Extract variables from the current command
+            this.extractVariables(command).forEach(v => allVariables.add(v));
+
             // Parse if statements with indented blocks
             if (command.startsWith('if ')) {
                 const condition = command.substring(3).trim();
@@ -89,7 +93,9 @@ class AlgorithmTracer {
                 // Look for indented lines following the if statement
                 let j = i + 1;
                 while (j < lines.length && lines[j].startsWith('  ')) {
-                    ifBlock.push(lines[j].substring(2).trim());
+                    const subCommand = lines[j].substring(2).trim();
+                    this.extractVariables(subCommand).forEach(v => allVariables.add(v));
+                    ifBlock.push(subCommand);
                     j++;
                 }
                 
@@ -112,7 +118,53 @@ class AlgorithmTracer {
             }
         }
         
-        return algorithm;
+        return { algorithm, variables: Array.from(allVariables) };
+    }
+
+    extractVariables(command) {
+        const variables = new Set();
+        // Regex to find words that are not keywords or numbers, and are likely variable names
+        const varRegex = /\b(?!step-|start|stop|print|read|if|goto|true|false|\d+\b)([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
+        let match;
+
+        // For assignment statements: VarName = Expression
+        const assignmentMatch = command.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$/);
+        if (assignmentMatch) {
+            variables.add(assignmentMatch[1]);
+            // Also scan the expression part for variables
+            let expr = assignmentMatch[2];
+            while ((match = varRegex.exec(expr)) !== null) {
+                variables.add(match[1]);
+            }
+        }
+
+        // For read statements: read VarName
+        const readMatch = command.match(/^read\s+([a-zA-Z_][a-zA-Z0-9_]*)$/);
+        if (readMatch) {
+            variables.add(readMatch[1]);
+        }
+
+        // For print statements: print Expression
+        const printMatch = command.match(/^print\s+(.*)$/);
+        if (printMatch) {
+            let expr = printMatch[1];
+            while ((match = varRegex.exec(expr)) !== null) {
+                variables.add(match[1]);
+            }
+        }
+
+        // For if conditions: if Condition
+        const ifMatch = command.match(/^if\s+(.*)$/);
+        if (ifMatch) {
+            let condition = ifMatch[1];
+            while ((match = varRegex.exec(condition)) !== null) {
+                variables.add(match[1]);
+            }
+        }
+
+        // For goto statements, no variables
+
+        return variables;
     }
 
     getCommandType(command) {
@@ -133,7 +185,9 @@ class AlgorithmTracer {
                 return;
             }
             
-            this.algorithm = this.parseAlgorithm(algorithmText);
+            const parsed = this.parseAlgorithm(algorithmText);
+            this.algorithm = parsed.algorithm;
+            this.variableColumns = new Set(parsed.variables);
             this.reset();
             this.displayCode();
             this.switchToExecutionScreen();
@@ -226,8 +280,8 @@ class AlgorithmTracer {
             
             // Variable columns
             this.variableColumns.forEach(varName => {
-                const td = document.createElement('td');
-                td.textContent = row.variables.has(varName) ? row.variables.get(varName) : '';
+                const td = document.createElement("td");
+                td.textContent = row.changedVariables.has(varName) ? row.changedVariables.get(varName) : "";
                 tr.appendChild(td);
             });
             
@@ -291,19 +345,19 @@ class AlgorithmTracer {
         
         switch (step.type) {
             case 'start':
-                this.addTraceRow(step.step, '', new Map(this.variables));
+                this.addTraceRow(step.step, '', new Map()); // No variables changed at start
                 this.currentStep++;
                 break;
                 
             case 'stop':
-                this.addTraceRow(step.step, '', new Map(this.variables));
+                this.addTraceRow(step.step, '', new Map()); // No variables changed at stop
                 this.currentStep++;
                 break;
                 
             case 'print':
                 const printOutput = this.evaluateExpression(step.command.substring(6).trim());
                 this.consoleOutput += printOutput;
-                this.addTraceRow(step.step, printOutput, new Map(this.variables));
+                this.addTraceRow(step.step, printOutput, new Map()); // No variables changed in print, only output
                 this.currentStep++;
                 break;
                 
@@ -312,6 +366,7 @@ class AlgorithmTracer {
                 this.isWaitingForInput = true;
                 this.waitingForVariable = varName;
                 this.waitingStep = step.step;
+                // No addTraceRow here, it will be added in submitInput
                 break;
                 
             case 'assignment':
@@ -346,7 +401,7 @@ class AlgorithmTracer {
         
         this.variables.set(varName, value);
         this.variableColumns.add(varName);
-        this.addTraceRow(stepNum, '', new Map(this.variables));
+        this.addTraceRow(stepNum, "", new Map([[varName, value]]));
     }
 
     executeIf(step) {
@@ -505,11 +560,12 @@ class AlgorithmTracer {
         throw new Error(`Cannot evaluate arithmetic expression: ${expr}`);
     }
 
-    addTraceRow(step, output, variables) {
+    addTraceRow(step, output, changedVariables) {
+        // changedVariables is a Map of variables that were updated/read in this step
         this.traceData.push({
             step: step,
             output: output,
-            variables: new Map(variables)
+            changedVariables: changedVariables // Store only the variables that changed in this step
         });
     }
 
@@ -527,9 +583,9 @@ class AlgorithmTracer {
         
         this.variables.set(this.waitingForVariable, value);
         this.variableColumns.add(this.waitingForVariable);
-        this.consoleOutput += inputValue;
+        this.consoleOutput += inputValue + '\n';
         
-        this.addTraceRow(this.waitingStep, '', new Map(this.variables));
+        this.addTraceRow(this.waitingStep, "", new Map([[this.waitingForVariable, value]]));
         
         this.isWaitingForInput = false;
         this.currentStep++;
