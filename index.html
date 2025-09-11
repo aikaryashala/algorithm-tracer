@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithm Step Tracer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Algorithm Step Tracer</h1>
+        </header>
+
+        <!-- Algorithm Input Screen -->
+        <div id="input-screen" class="screen active">
+            <div class="input-section">
+                <h2>Enter Your Algorithm</h2>
+                <textarea id="algorithm-input" placeholder="Enter your algorithm here...
+Example:
+step-1: start
+step-2: print &quot;Hello World!&quot;
+step-3: stop"></textarea>
+                <button id="start-trace-btn" class="btn primary">Start Tracing</button>
+            </div>
+        </div>
+
+        <!-- Execution Screen -->
+        <div id="execution-screen" class="screen">
+            <div class="execution-layout">
+                <!-- Left Panel: Code Display -->
+                <div class="left-panel">
+                    <h3>Algorithm Code</h3>
+                    <div id="code-display" class="code-container"></div>
+                </div>
+
+                <!-- Right Panel: Trace Table and Console -->
+                <div class="right-panel">
+                    <!-- Trace Table -->
+                    <div class="trace-section">
+                        <h3>Execution Trace</h3>
+                        <div class="table-container">
+                            <table id="trace-table">
+                                <thead>
+                                    <tr>
+                                        <th>Step</th>
+                                        <th>Output</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Console -->
+                    <div class="console-section">
+                        <h3>Console</h3>
+                        <div id="console-output" class="console-output"></div>
+                        <div id="console-input-container" class="console-input-container" style="display: none;">
+                            <span class="input-prompt">Input: </span>
+                            <input type="text" id="console-input" class="console-input">
+                            <button id="submit-input-btn" class="btn small">Submit</button>
+                        </div>
+                    </div>
+
+                    <!-- Control Buttons -->
+                    <div class="controls">
+                        <button id="prev-step-btn" class="btn" disabled>Previous Step</button>
+                        <button id="next-step-btn" class="btn primary">Next Step</button>
+                        <button id="restart-btn" class="btn">Restart</button>
+                        <button id="new-code-btn" class="btn">New Code</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Display -->
+        <div id="error-display" class="error-display" style="display: none;">
+            <div class="error-content">
+                <span class="error-message"></span>
+                <button class="error-close">&times;</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
