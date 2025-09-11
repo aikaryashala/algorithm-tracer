@@ -60,7 +60,7 @@ header h1 {
     padding: 15px;
     border: 2px solid #ddd;
     border-radius: 5px;
-    font-family: 'Courier New', monospace;
+    font-family: 'Courier New', 'Monaco', 'Consolas', 'Liberation Mono', 'Lucida Console', monospace;
     font-size: 14px;
     resize: vertical;
     margin-bottom: 20px;
@@ -102,7 +102,7 @@ header h1 {
     border-radius: 5px;
     padding: 15px;
     overflow-y: auto;
-    font-family: 'Courier New', monospace;
+    font-family: 'Courier New', 'Monaco', 'Consolas', 'Liberation Mono', 'Lucida Console', monospace;
     font-size: 14px;
 }
 
@@ -152,6 +152,7 @@ header h1 {
     width: 100%;
     border-collapse: collapse;
     font-size: 14px;
+    font-family: 'Courier New', 'Monaco', 'Consolas', 'Liberation Mono', 'Lucida Console', monospace;
 }
 
 #trace-table th {
@@ -189,7 +190,7 @@ header h1 {
     color: #ecf0f1;
     padding: 15px;
     border-radius: 5px;
-    font-family: 'Courier New', monospace;
+    font-family: 'Courier New', 'Monaco', 'Consolas', 'Liberation Mono', 'Lucida Console', monospace;
     font-size: 14px;
     min-height: 150px;
     max-height: 200px;
@@ -218,7 +219,7 @@ header h1 {
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 3px;
-    font-family: 'Courier New', monospace;
+    font-family: 'Courier New', 'Monaco', 'Consolas', 'Liberation Mono', 'Lucida Console', monospace;
 }
 
 .console-input:focus {
@@ -308,8 +309,9 @@ header h1 {
 
 /* Space visualization */
 .space-dot {
-    color: #999;
-    font-weight: bold;
+    color: #555;
+    font-weight: normal;
+    opacity: 0.3;
 }
 
 /* Responsive design */

@@ -109,18 +109,28 @@ class AlgorithmTracer {
                 
                 const ifBlock = [];
                 
+                // Calculate expected indentation based on step number and "if" keyword
+                const stepPrefix = `step-${stepNumber}: if`;
+                const expectedIndentation = stepPrefix.length + 1; // +1 for proper alignment
+                const indentationSpaces = ' '.repeat(expectedIndentation);
+                
                 // Look for indented lines following the if statement
                 let j = i + 1;
                 while (j < lines.length) {
                     const nextLine = lines[j];
                     const nextTrimmed = nextLine.trim();
                     
-                    // Check if this line is indented (part of the if block)
-                    if (nextLine.startsWith("  ") || nextLine.startsWith("\t")) {
+                    // Check if this line has the expected indentation or is a tab-indented line
+                    if (nextLine.startsWith(indentationSpaces) || nextLine.startsWith("\t")) {
                         if (nextTrimmed) { // Only add non-empty indented lines
                             this.extractVariables(nextTrimmed).forEach(v => allVariables.add(v));
                             ifBlock.push(nextTrimmed);
                         }
+                        j++;
+                    } else if (nextLine.startsWith("  ") && nextTrimmed) {
+                        // Also accept any line with at least 2 spaces as indented (for backward compatibility)
+                        this.extractVariables(nextTrimmed).forEach(v => allVariables.add(v));
+                        ifBlock.push(nextTrimmed);
                         j++;
                     } else {
                         // Not indented, end of if block
@@ -528,6 +538,12 @@ class AlgorithmTracer {
     }
 
     evaluateCondition(condition) {
+        // Remove outer parentheses if present
+        condition = condition.trim();
+        if (condition.startsWith("(") && condition.endsWith(")")) {
+            condition = condition.slice(1, -1).trim();
+        }
+        
         // Simple condition evaluation for comparison operators
         const operators = ["<=", ">=", "==", "!=", "<", ">"];
         
