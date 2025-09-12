@@ -748,7 +748,7 @@ class AlgorithmTracer {
     updateCodeHighlight() {
         // Reset all highlighting
         this.codeLineElements.forEach(line => {
-            line.classList.remove("current");
+            line.classList.remove("current", "skipped");
         });
         
         // Handle highlighting for currently executing if block sub-commands
@@ -758,8 +758,12 @@ class AlgorithmTracer {
                 const subIndex = parseInt(line.dataset.subIndex);
                 const lineType = line.dataset.lineType;
                 
-                if (stepIndex === this.currentStep && lineType === "sub" && subIndex === this.currentExecutingSubCommand) {
-                    line.classList.add("current");
+                if (stepIndex === this.currentStep && lineType === "sub") {
+                    if (subIndex === this.currentExecutingSubCommand) {
+                        line.classList.add("current");
+                    } else if (subIndex < this.currentExecutingSubCommand) {
+                        line.classList.add("executed"); // Add this class for executed lines
+                    }
                 }
             });
         } else {
@@ -1050,8 +1054,12 @@ class AlgorithmTracer {
                 // Insert the nested if block commands at the beginning of the remaining commands
                 const nestedCommands = [...subItem.ifBlock];
                 this.ifBlockCommands = nestedCommands.concat(this.ifBlockCommands);
+            } else {
+                // Condition failed - we need to skip the nested if body in visualization
+                // Add the number of commands that would have been in the nested block to currentExecutingSubCommand
+                this.currentExecutingSubCommand += subItem.ifBlock.length;
             }
-            
+
             // Move to next sub-command
             this.currentExecutingSubCommand++;
         }
