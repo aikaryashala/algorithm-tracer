@@ -203,3 +203,28 @@ The `goto step-14` statement is indented 2 spaces less than the inner if body st
 - **When these rules are violated, flag appropriately:**
   - **"Coding Style not followed"** for spacing violations
   - **"PascalCase variable names not followed"** for naming violations
+
+## Language Constraints
+
+### **Variables**
+- **Maximum 6 variables** allowed per program
+- **All variables are global** (no local scope)
+- **Variables created** with `read` statement or first assignment
+- **Variable names** limited to 42 characters maximum
+
+### **Expressions**
+- **Maximum 10 operators** per expression
+- **Maximum parentheses nesting depth** of 3 levels
+- **Mixed operations allowed** (e.g., `if ((A + B) > (C * D)):`)
+
+### **Control Flow**
+- **Goto statements** can jump both forward and backward
+- **Goto can jump OUT of if blocks** but **CANNOT jump INTO if blocks**
+- **Goto can only target top-level steps** (not statements inside if blocks)
+- **Empty if bodies not allowed** - must contain at least one statement
+- **One statement per line only** - no compound statements allowed
+
+### **Data Types**
+- **Integer range**: Unlimited
+- **String length**: No limit
+- **Line length**: No limit
