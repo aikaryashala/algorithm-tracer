@@ -363,8 +363,8 @@ class AlgorithmTracer {
             const line = lines[i];
             const trimmed = line.trim();
             
-            // Found a step line with if statement
-            if (trimmed.match(/^step-(\d+):.*if\s+\(/)) {
+            // Found a step line with ANY if statement (properly formatted or not)
+            if (trimmed.match(/^step-(\d+):.*\bif\b/)) {  // Matches any "if" word
                 const stepMatch = trimmed.match(/^step-(\d+):/);
                 return {
                     stepNum: parseInt(stepMatch[1]),
@@ -373,7 +373,7 @@ class AlgorithmTracer {
             }
             
             // If we hit another top-level step without if, stop looking
-            if (trimmed.startsWith('step-') && !trimmed.includes('if ')) {
+            if (trimmed.startsWith('step-') && !trimmed.includes('if')) {
                 break;
             }
         }
@@ -629,20 +629,25 @@ class AlgorithmTracer {
                         errors: [`Line ${step.lineNum}: Invalid goto target format '${gotoTarget}'`]
                     };
                 }
-            } else if (content.startsWith('if ')) {
-                if (!content.includes('(') || !content.includes(')') || !content.endsWith(':')) {
+            } else if (content.startsWith('if') || content.includes('if ')) {
+                const ifValidationResult = this.validateIfStatementFormat(content, step.lineNum);
+                
+                if (ifValidationResult && ifValidationResult !== 'VALID_IF') {
                     return {
                         isValid: false,
-                        errors: [`Line ${step.lineNum}: if statement must have format 'if (condition):'`]
+                        errors: [ifValidationResult]
                     };
                 }
-                ifNestingLevel++;
                 
-                if (ifNestingLevel > 2) {
-                    return {
-                        isValid: false,
-                        errors: [`Line ${step.lineNum}: Maximum nesting level exceeded (single-level nested if only)`]
-                    };
+                if (ifValidationResult === 'VALID_IF') {
+                    ifNestingLevel++;
+                    
+                    if (ifNestingLevel > 2) {
+                        return {
+                            isValid: false,
+                            errors: [`Line ${step.lineNum}: Maximum nesting level exceeded (single-level nested if only)`]
+                        };
+                    }
                 }
             } else if (content.includes('=') && !content.includes('==') && !content.includes('!=') && !content.includes('<=') && !content.includes('>=')) {
                 // Assignment statement
@@ -704,6 +709,42 @@ class AlgorithmTracer {
             isValid: true,
             errors: []
         };
+    }
+
+    validateIfStatementFormat(content, lineNum) {
+        // Check if this looks like an if statement at all
+        if (!content.startsWith('if') && !content.includes('if ')) {
+            return null; // Not an if statement
+        }
+        
+        // Check for missing space after 'if'
+        if (content.startsWith('if(')) {
+            return `Line ${lineNum}: Missing space after 'if'. Use 'if (condition):' format`;
+        }
+        
+        // Check for other format issues where 'if' isn't followed by space
+        if (content.startsWith('if') && !content.startsWith('if ')) {
+            return `Line ${lineNum}: Invalid if format. Use 'if (condition):' format`;
+        }
+        
+        // For properly spaced if statements, check other format requirements
+        if (content.startsWith('if ')) {
+            // Check for missing parentheses
+            if (!content.includes('(') || !content.includes(')')) {
+                return `Line ${lineNum}: Parentheses must be added. Use 'if (condition):' format`;
+            }
+            
+            // Check for missing colon
+            if (!content.endsWith(':')) {
+                return `Line ${lineNum}: Missing colon. Use 'if (condition):' format`;
+            }
+            
+            // If we get here, it's a properly formatted if statement
+            return 'VALID_IF'; // Special return value to indicate valid if
+        }
+        
+        // Catch any other if-related issues
+        return `Line ${lineNum}: Invalid if format. Use 'if (condition):' format`;
     }
 
     startTracing() {
