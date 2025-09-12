@@ -59,6 +59,16 @@ step-N: if (condition):
 - **Maximum step number is 99**
 - Alignment is based on the position after "if", not the step number length
 
+## Simple Rule
+
+**Indentation Requirements:**
+- **Single-digit steps** (`step-1` to `step-9`): 
+  - If body statements must have **10 leading spaces**
+  - Nested if body statements must have **12 leading spaces**
+- **Two-digit steps** (`step-10` to `step-99`): 
+  - If body statements must have **11 leading spaces**
+  - Nested if body statements must have **13 leading spaces**
+
 ## Data Types and Expressions
 
 ### Data Types
@@ -146,8 +156,7 @@ step-15: stop                    ← Required last statement
 ```
 
 **Indentation Analysis:**
-- `step-10:` body starts at column 12 (space after "if")
-- Nested if indents 2 spaces from parent (column 14)
+- **Two-digit steps**: If body statements must have **11 leading spaces**, nested if body statements must have **13 leading spaces**
 
 ## Valid If Body Statements
 
