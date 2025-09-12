@@ -327,6 +327,76 @@ class AlgorithmTracer {
         return null; // No error found
     }
 
+    validateIfBlockIndentation(lines) {
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+            const leadingSpaces = line.length - line.trimStart().length;
+            const lineNum = i + 1;
+            
+            // Skip empty lines and top-level steps
+            if (!trimmed || (!line.startsWith(' ') && trimmed.startsWith('step-'))) continue;
+            
+            // This is an indented line - find the parent if step
+            const parentStep = this.findParentIfStep(lines, i);
+            if (!parentStep) {
+                return `Line ${lineNum}: Indented line found outside of if block`;
+            }
+            
+            // Validate the indentation is correct for its level
+            if (!this.isValidIndentationLevel(leadingSpaces, parentStep.stepNum)) {
+                return `Line ${lineNum}: Invalid indentation. Use ${this.getValidIndentationOptions(parentStep.stepNum)} spaces for step-${parentStep.stepNum} if-block`;
+            }
+            
+            // Check for nested if constraint
+            if (trimmed.startsWith('if ') && leadingSpaces > this.getOuterIfIndentation(parentStep.stepNum)) {
+                return `Line ${lineNum}: Maximum nesting level exceeded (single-level nested if only)`;
+            }
+        }
+        
+        return null;
+    }
+
+    findParentIfStep(lines, currentIndex) {
+        // Look backwards to find the most recent step with if statement
+        for (let i = currentIndex - 1; i >= 0; i--) {
+            const line = lines[i];
+            const trimmed = line.trim();
+            
+            // Found a step line with if statement
+            if (trimmed.match(/^step-(\d+):.*if\s+\(/)) {
+                const stepMatch = trimmed.match(/^step-(\d+):/);
+                return {
+                    stepNum: parseInt(stepMatch[1]),
+                    lineNum: i + 1
+                };
+            }
+            
+            // If we hit another top-level step without if, stop looking
+            if (trimmed.startsWith('step-') && !trimmed.includes('if ')) {
+                break;
+            }
+        }
+        
+        return null;
+    }
+
+    isValidIndentationLevel(spaces, stepNum) {
+        const outerIfSpaces = stepNum <= 9 ? 10 : 11;
+        const nestedIfSpaces = outerIfSpaces + 2;
+        
+        return spaces === outerIfSpaces || spaces === nestedIfSpaces;
+    }
+
+    getValidIndentationOptions(stepNum) {
+        const outer = stepNum <= 9 ? 10 : 11;
+        return `${outer} (outer if) or ${outer + 2} (nested if)`;
+    }
+
+    getOuterIfIndentation(stepNum) {
+        return stepNum <= 9 ? 10 : 11;
+    }
+
     validateAlgorithm(algorithmText) {
         if (!algorithmText || algorithmText.trim() === '') {
             return {
@@ -478,6 +548,14 @@ class AlgorithmTracer {
             }
         }
         
+        const indentationError = this.validateIfBlockIndentation(lines);
+        if (indentationError) {
+            return {
+                isValid: false,
+                errors: [indentationError]
+            };
+        }
+
         // Validate each step content and indentation
         let ifNestingLevel = 0;
         
