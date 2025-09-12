@@ -833,7 +833,7 @@ class AlgorithmTracer {
             }
 
             // Handle operators
-            if (['+', '-', '*', '/'].includes(char)) {
+            if (['+', '-', '*', '/', '%'].includes(char)) {
                 tokens.push(char);
                 i++;
                 continue;
@@ -847,7 +847,7 @@ class AlgorithmTracer {
 
             // Handle numbers and variable names
             let j = i;
-            while (j < expr.length && !['"', '+', '-', '*', '/', ' '].includes(expr[j])) {
+            while (j < expr.length && !['"', '+', '-', '*', '/', '%', ' '].includes(expr[j])) {
                 j++;
             }
             tokens.push(expr.substring(i, j));
@@ -861,7 +861,7 @@ class AlgorithmTracer {
 
         for (let k = 1; k < tokens.length; k++) {
             const operator = tokens[k];
-            if (['+', '-', '*', '/'].includes(operator)) {
+            if (['+', '-', '*', '/', '%'].includes(operator)) {
                 if (k + 1 < tokens.length) {
                     const nextOperand = this.getLiteralValue(tokens[k + 1]);
                     
@@ -895,6 +895,13 @@ class AlgorithmTracer {
                                 result = Math.floor(result / nextOperand); // Integer division
                             } else {
                                 throw new Error('Division only works with numbers');
+                            }
+                            break;
+                        case '%':
+                            if (typeof result === 'number' && typeof nextOperand === 'number') {
+                                result = result % nextOperand;
+                            } else {
+                                throw new Error('Modulo only works with numbers');
                             }
                             break;
                     }
