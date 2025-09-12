@@ -228,3 +228,35 @@ The `goto step-14` statement is indented 2 spaces less than the inner if body st
 - **Integer range**: Unlimited
 - **String length**: No limit
 - **Line length**: No limit
+
+## Additional Language Rules
+
+### **Statement Placement**
+- **Assignment and read statements** allowed at any level (top-level and inside if blocks)
+- **No statements allowed after the final `stop`**
+
+### **Variable Rules**
+- **Variables initialized only** through `read` or assignment
+- **Undefined variable usage** results in immediate error
+- **Strict type consistency**: Once a variable holds Int, it cannot later hold String
+- **Case-sensitive variable names**: `Counter` and `counter` are different variables
+- **Multiple reads allowed**: `read A` can be used multiple times
+
+### **String and Expression Rules**
+- **String content**: Newlines allowed in strings
+- **Escape sequences**: Only `\n` supported (no other escape sequences)
+- **Type comparisons forbidden**: Cannot compare String with Int (e.g., `"5" > 3` is invalid)
+- **Left-to-right evaluation**: Same-precedence operators evaluate left-to-right (e.g., `A + B - C` = `(A + B) - C`)
+
+### **Program Structure**
+- **No comments** allowed in code
+- **No blank lines** allowed between steps
+- **No additional reserved words** beyond the 6 keywords
+
+### **Validation Requirements**
+- **Goto target validation**: Must verify `goto step-N` target exists
+- **Division by zero**: Ignore during syntax validation (runtime concern only)
+
+### **Input/Output Behavior**
+- **Print format**: `print 42` outputs exactly `42` (no automatic newline)
+- **Read input type**: Numeric input becomes Int, non-numeric input becomes String
