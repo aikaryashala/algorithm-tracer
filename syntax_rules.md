@@ -155,7 +155,7 @@ Within an if statement body, the following are allowed:
 - `print` statements
 - `read` statements  
 - `goto` statements
-- Additional nested `if` statements
+- **One additional nested `if` statement (single-level nesting only)**
 
 ## Indentation and Execution Flow
 
