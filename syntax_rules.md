@@ -178,6 +178,8 @@ The `goto step-14` statement is indented 2 spaces less than the inner if body st
 - No extra spaces around keywords (except the required space before arguments)
 - String literals in print statements use double quotes
 - **Variable names** follow PascalCase notation (e.g., `VariableName`, `Counter`, `InputValue`)
+- **Only spaces allowed for indentation - no tabs permitted**
+  - **Error message**: "use spaces instead of tabs" when tabs are found
 
 ## Coding Style
 
