@@ -340,23 +340,23 @@ class AlgorithmTracer {
             // This is an indented line - find the parent if step
             const parentStep = this.findParentIfStep(lines, i);
             if (!parentStep) {
-                return `Line ${lineNum}: Indented line found outside of if block`;
+                return `Line ${lineNum}: Indented line found outside of if block: "${trimmed}"`;
             }
             
             // Validate the indentation is correct for its level
             if (!this.isValidIndentationLevel(leadingSpaces, parentStep.stepNum)) {
-                return `Line ${lineNum}: Invalid indentation. Use ${this.getValidIndentationOptions(parentStep.stepNum)} spaces for step-${parentStep.stepNum} if-block`;
+                return `Line ${lineNum}: Invalid indentation for "${trimmed}". Use ${this.getValidIndentationOptions(parentStep.stepNum)} spaces for step-${parentStep.stepNum} if-block`;
             }
             
             // Check for nested if constraint
             if (trimmed.startsWith('if ') && leadingSpaces > this.getOuterIfIndentation(parentStep.stepNum)) {
-                return `Line ${lineNum}: Maximum nesting level exceeded (single-level nested if only)`;
+                return `Line ${lineNum}: Maximum nesting level exceeded for "${trimmed}" (single-level nested if only)`;
             }
         }
         
         return null;
     }
-
+    
     findParentIfStep(lines, currentIndex) {
         // Look backwards to find the most recent step with if statement
         for (let i = currentIndex - 1; i >= 0; i--) {
