@@ -110,36 +110,12 @@ class AlgorithmTracer {
                     condition = condition.slice(0, -1).trim();
                 }
                 
-                const ifBlock = [];
+                // Parse the if block recursively
+                const parseResult = this.parseIfBlock(lines, i + 1, stepNumber);
+                const ifBlock = parseResult.commands;
                 
-                // Calculate expected indentation based on step number and "if" keyword
-                const stepPrefix = `step-${stepNumber}: if`;
-                const expectedIndentation = stepPrefix.length + 1; // +1 for proper alignment
-                const indentationSpaces = ' '.repeat(expectedIndentation);
-                
-                // Look for indented lines following the if statement
-                let j = i + 1;
-                while (j < lines.length) {
-                    const nextLine = lines[j];
-                    const nextTrimmed = nextLine.trim();
-                    
-                    // Check if this line has the expected indentation or is a tab-indented line
-                    if (nextLine.startsWith(indentationSpaces) || nextLine.startsWith("\t")) {
-                        if (nextTrimmed) { // Only add non-empty indented lines
-                            this.extractVariables(nextTrimmed).forEach(v => allVariables.add(v));
-                            ifBlock.push(nextTrimmed);
-                        }
-                        j++;
-                    } else if (nextLine.startsWith("  ") && nextTrimmed) {
-                        // Also accept any line with at least 2 spaces as indented (for backward compatibility)
-                        this.extractVariables(nextTrimmed).forEach(v => allVariables.add(v));
-                        ifBlock.push(nextTrimmed);
-                        j++;
-                    } else {
-                        // Not indented, end of if block
-                        break;
-                    }
-                }
+                // Extract variables from the if block
+                this.extractVariablesFromBlock(ifBlock).forEach(v => allVariables.add(v));
                 
                 algorithm.push({
                     step: stepNumber,
@@ -149,7 +125,7 @@ class AlgorithmTracer {
                     originalLine: line
                 });
                 
-                i = j - 1; // Skip the processed indented lines
+                i = parseResult.nextLineIndex - 1; // Skip the processed indented lines
             } else {
                 algorithm.push({
                     step: stepNumber,
@@ -161,6 +137,121 @@ class AlgorithmTracer {
         }
         
         return { algorithm, variables: Array.from(allVariables) };
+    }
+
+    parseIfBlock(lines, startIndex, parentStepNumber) {
+        const commands = [];
+        let i = startIndex;
+        
+        // Calculate expected indentation based on parent step
+        const stepPrefix = `step-${parentStepNumber}: if`;
+        const expectedIndentation = stepPrefix.length;
+        const indentationSpaces = ' '.repeat(expectedIndentation);
+        
+        while (i < lines.length) {
+            const line = lines[i];
+            const trimmedLine = line.trim();
+            
+            // Check if this line has the expected indentation
+            if (line.startsWith(indentationSpaces) || (line.startsWith("  ") && trimmedLine)) {
+                if (!trimmedLine) {
+                    i++;
+                    continue; // Skip empty indented lines
+                }
+                
+                // Check if this is a nested if statement
+                if (trimmedLine.startsWith("if ")) {
+                    let condition = trimmedLine.substring(3).trim();
+                    if (condition.endsWith(":")) {
+                        condition = condition.slice(0, -1).trim();
+                    }
+                    
+                    // Calculate the indentation level for the nested if
+                    const leadingSpaces = line.length - line.trimStart().length;
+                    
+                    // Parse the nested if block
+                    const nestedResult = this.parseNestedIfBlock(lines, i + 1, leadingSpaces);
+                    
+                    commands.push({
+                        type: "nested-if",
+                        condition: condition,
+                        ifBlock: nestedResult.commands,
+                        originalLine: trimmedLine
+                    });
+                    
+                    i = nestedResult.nextLineIndex;
+                } else {
+                    // Regular command
+                    commands.push({
+                        type: "command",
+                        command: trimmedLine,
+                        originalLine: trimmedLine
+                    });
+                    i++;
+                }
+            } else {
+                // Not indented, end of if block
+                break;
+            }
+        }
+        
+        return { commands: commands, nextLineIndex: i };
+    }
+
+    parseNestedIfBlock(lines, startIndex, parentIndentLevel) {
+        const commands = [];
+        let i = startIndex;
+        
+        // For nested if, we need more indentation than the parent
+        const expectedMinIndent = parentIndentLevel + 2; // At least 2 more spaces
+        
+        while (i < lines.length) {
+            const line = lines[i];
+            const trimmedLine = line.trim();
+            const currentIndent = line.length - line.trimStart().length;
+            
+            // Check if this line has enough indentation for the nested block
+            if (currentIndent >= expectedMinIndent && trimmedLine) {
+                // Check for another level of nested if
+                if (trimmedLine.startsWith("if ")) {
+                    let condition = trimmedLine.substring(3).trim();
+                    if (condition.endsWith(":")) {
+                        condition = condition.slice(0, -1).trim();
+                    }
+                    
+                    // Parse the nested if block recursively
+                    const nestedResult = this.parseNestedIfBlock(lines, i + 1, currentIndent);
+                    
+                    commands.push({
+                        type: "nested-if",
+                        condition: condition,
+                        ifBlock: nestedResult.commands,
+                        originalLine: trimmedLine
+                    });
+                    
+                    i = nestedResult.nextLineIndex;
+                } else {
+                    // Regular command in nested block
+                    commands.push({
+                        type: "command",
+                        command: trimmedLine,
+                        originalLine: trimmedLine
+                    });
+                    i++;
+                }
+            } else if (currentIndent > parentIndentLevel && currentIndent < expectedMinIndent && trimmedLine) {
+                // This might be a continuation at an intermediate level - stop parsing
+                break;
+            } else if (!trimmedLine && currentIndent >= expectedMinIndent) {
+                // Empty line with proper indentation - skip
+                i++;
+            } else {
+                // Not properly indented for this nested block, end of block
+                break;
+            }
+        }
+        
+        return { commands: commands, nextLineIndex: i };
     }
 
     extractVariables(command) {
@@ -178,6 +269,21 @@ class AlgorithmTracer {
             variables.add(readMatch[1]);
         }
 
+        return variables;
+    }
+
+    extractVariablesFromBlock(block) {
+        const variables = new Set();
+        
+        for (const item of block) {
+            if (item.type === "command") {
+                this.extractVariables(item.command).forEach(v => variables.add(v));
+            } else if (item.type === "nested-if") {
+                // Recursively extract from nested if blocks
+                this.extractVariablesFromBlock(item.ifBlock).forEach(v => variables.add(v));
+            }
+        }
+        
         return variables;
     }
 
@@ -243,22 +349,47 @@ class AlgorithmTracer {
             // If it's an if statement, also display its indented block
             if (step.type === "if" && step.ifBlock && step.ifBlock.length > 0) {
                 // Calculate proper indentation based on step number
-                // The indented lines should align with the space right after 'if'
                 const stepPrefix = `step-${step.step}: if`;
-                const indentationSpaces = ' '.repeat(stepPrefix.length);
+                const baseIndentSpaces = ' '.repeat(stepPrefix.length);
                 
-                step.ifBlock.forEach((subCommand, subIndex) => {
-                    const subLineEl = document.createElement("div");
-                    subLineEl.className = "code-line";
-                    subLineEl.textContent = indentationSpaces + subCommand;
-                    subLineEl.dataset.stepIndex = index;
-                    subLineEl.dataset.subIndex = subIndex;
-                    subLineEl.dataset.lineType = "sub";
-                    this.codeDisplay.appendChild(subLineEl);
-                    this.codeLineElements.push(subLineEl);
-                });
+                this.displayIfBlock(step.ifBlock, index, baseIndentSpaces, 0);
             }
         });
+    }
+
+    displayIfBlock(block, parentStepIndex, baseIndent, subCommandOffset) {
+        let currentOffset = subCommandOffset;
+        
+        block.forEach((item, itemIndex) => {
+            if (item.type === "command") {
+                const subLineEl = document.createElement("div");
+                subLineEl.className = "code-line";
+                subLineEl.textContent = baseIndent + item.command;
+                subLineEl.dataset.stepIndex = parentStepIndex;
+                subLineEl.dataset.subIndex = currentOffset;
+                subLineEl.dataset.lineType = "sub";
+                this.codeDisplay.appendChild(subLineEl);
+                this.codeLineElements.push(subLineEl);
+                currentOffset++;
+            } else if (item.type === "nested-if") {
+                // Display the nested if statement
+                const nestedIfElement = document.createElement("div");
+                nestedIfElement.className = "code-line";
+                nestedIfElement.textContent = baseIndent + "if " + item.condition + ":";
+                nestedIfElement.dataset.stepIndex = parentStepIndex;
+                nestedIfElement.dataset.subIndex = currentOffset;
+                nestedIfElement.dataset.lineType = "sub";
+                this.codeDisplay.appendChild(nestedIfElement);
+                this.codeLineElements.push(nestedIfElement);
+                currentOffset++;
+                
+                // Display the nested if block with additional indentation
+                const nestedIndent = baseIndent + "  "; // Add 2 more spaces for nested blocks
+                currentOffset = this.displayIfBlock(item.ifBlock, parentStepIndex, nestedIndent, currentOffset);
+            }
+        });
+        
+        return currentOffset;
     }
 
     switchToExecutionScreen() {
@@ -501,8 +632,9 @@ class AlgorithmTracer {
         
         if (conditionResult) {
             // Set up for executing if block one command at a time
+            // Convert the parsed block structure to executable commands
             this.isExecutingIfBlock = true;
-            this.ifBlockCommands = [...step.ifBlock];
+            this.ifBlockCommands = [...step.ifBlock]; // Now these are objects with type and command/condition
             this.currentIfStep = step.step;
             this.currentExecutingSubCommand = 0;
         } else {
@@ -524,50 +656,67 @@ class AlgorithmTracer {
             return;
         }
         
-        const subCommand = this.ifBlockCommands.shift();
+        const subItem = this.ifBlockCommands.shift();
         const subStepLabel = `${this.currentIfStep}${String.fromCharCode(97 + this.currentExecutingSubCommand)}`;
         
-        // Skip empty commands
-        if (!subCommand.trim()) {
-            this.currentExecutingSubCommand++;
-            this.executeIfSubCommand(); // Recursively execute next
-            return;
-        }
-        
-        const commandType = this.getCommandType(subCommand);
-        
-        try {
-            if (commandType === "goto") {
-                this.executeGoto(subCommand);
-                // Clear if block execution state after goto
+        // Handle different types of sub-items
+        if (subItem.type === "command") {
+            const subCommand = subItem.command;
+            
+            // Skip empty commands
+            if (!subCommand.trim()) {
+                this.currentExecutingSubCommand++;
+                this.executeIfSubCommand(); // Recursively execute next
+                return;
+            }
+            
+            const commandType = this.getCommandType(subCommand);
+            
+            try {
+                if (commandType === "goto") {
+                    this.executeGoto(subCommand);
+                    // Clear if block execution state after goto
+                    this.isExecutingIfBlock = false;
+                    this.ifBlockCommands = [];
+                    this.currentExecutingSubCommand = undefined;
+                    this.currentIfStep = null;
+                } else if (commandType === "assignment") {
+                    this.executeAssignment(subCommand, subStepLabel);
+                    this.currentExecutingSubCommand++;
+                } else if (commandType === "print") {
+                    const printOutput = this.evaluateExpression(subCommand.substring(6).trim());
+                    this.consoleOutput += printOutput;
+                    this.addTraceRow(subStepLabel, printOutput, new Map());
+                    this.currentExecutingSubCommand++;
+                } else if (commandType === "read") {
+                    const varName = subCommand.substring(5).trim();
+                    this.isWaitingForInput = true;
+                    this.waitingForVariable = varName;
+                    this.waitingStep = subStepLabel;
+                    // Don't increment currentExecutingSubCommand here, will be done after input
+                } else {
+                    throw new Error(`Unsupported command in if block: ${subCommand}`);
+                }
+            } catch (error) {
+                // On error, clear if block execution and rethrow
                 this.isExecutingIfBlock = false;
                 this.ifBlockCommands = [];
                 this.currentExecutingSubCommand = undefined;
                 this.currentIfStep = null;
-            } else if (commandType === "assignment") {
-                this.executeAssignment(subCommand, subStepLabel);
-                this.currentExecutingSubCommand++;
-            } else if (commandType === "print") {
-                const printOutput = this.evaluateExpression(subCommand.substring(6).trim());
-                this.consoleOutput += printOutput;
-                this.addTraceRow(subStepLabel, printOutput, new Map());
-                this.currentExecutingSubCommand++;
-            } else if (commandType === "read") {
-                const varName = subCommand.substring(5).trim();
-                this.isWaitingForInput = true;
-                this.waitingForVariable = varName;
-                this.waitingStep = subStepLabel;
-                // Don't increment currentExecutingSubCommand here, will be done after input
-            } else {
-                throw new Error(`Unsupported command in if block: ${subCommand}`);
+                throw error;
             }
-        } catch (error) {
-            // On error, clear if block execution and rethrow
-            this.isExecutingIfBlock = false;
-            this.ifBlockCommands = [];
-            this.currentExecutingSubCommand = undefined;
-            this.currentIfStep = null;
-            throw error;
+        } else if (subItem.type === "nested-if") {
+            // Handle nested if statement
+            const conditionResult = this.evaluateCondition(subItem.condition);
+            
+            if (conditionResult) {
+                // Insert the nested if block commands at the beginning of the remaining commands
+                const nestedCommands = [...subItem.ifBlock];
+                this.ifBlockCommands = nestedCommands.concat(this.ifBlockCommands);
+            }
+            
+            // Move to next sub-command
+            this.currentExecutingSubCommand++;
         }
         
         this.updateDisplay();
