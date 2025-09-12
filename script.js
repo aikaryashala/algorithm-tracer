@@ -778,6 +778,38 @@ class AlgorithmTracer {
     evaluateExpression(expr) {
         expr = expr.trim();
 
+        // Handle parentheses by recursively evaluating sub-expressions
+        while (expr.includes('(')) {
+            let openIndex = -1;
+            let closeIndex = -1;
+            let depth = 0;
+            
+            // Find the innermost parentheses
+            for (let i = 0; i < expr.length; i++) {
+                if (expr[i] === '(') {
+                    if (depth === 0) openIndex = i;
+                    depth++;
+                } else if (expr[i] === ')') {
+                    depth--;
+                    if (depth === 0) {
+                        closeIndex = i;
+                        break;
+                    }
+                }
+            }
+            
+            if (openIndex === -1 || closeIndex === -1) {
+                throw new Error('Mismatched parentheses in expression');
+            }
+            
+            // Evaluate the sub-expression inside parentheses
+            const subExpr = expr.substring(openIndex + 1, closeIndex);
+            const subResult = this.evaluateExpression(subExpr);
+            
+            // Replace the parentheses and their content with the result
+            expr = expr.substring(0, openIndex) + subResult + expr.substring(closeIndex + 1);
+        }
+
         const tokens = [];
         let i = 0;
         while (i < expr.length) {
