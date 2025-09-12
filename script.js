@@ -1403,28 +1403,6 @@ class AlgorithmTracer {
         return tokens.some(token => token.type === 'PAREN');
     }
 
-    // getLiteralValue(token) {
-    //     token = token.trim();
-    //     // Handle string literals
-    //     if (token.startsWith('"') && token.endsWith('"')) {
-    //         // Remove quotes and handle escaped newlines
-    //         let value = token.substring(1, token.length - 1);
-    //         value = value.replace(/\\n/g, '\n');
-    //         value = value.replace(/\\"/g, '"'); // Handle escaped double quotes
-    //         return value;
-    //     }
-    //     // Handle numeric literals
-    //     const num = parseInt(token);
-    //     if (!isNaN(num)) {
-    //         return num;
-    //     }
-    //     // Handle variable references
-    //     if (this.variables.has(token)) {
-    //         return this.variables.get(token);
-    //     }
-    //     throw new Error(`Unknown token or variable: ${token}`);
-    // }
-
     submitInput() {
         if (!this.isWaitingForInput) return;
 
