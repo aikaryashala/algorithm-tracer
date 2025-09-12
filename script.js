@@ -477,7 +477,8 @@ class AlgorithmTracer {
             
             // Output column
             const outputTd = document.createElement("td");
-            outputTd.textContent = row.output || "";
+            // outputTd.textContent = row.output || "";
+            outputTd.textContent = row.output !== undefined && row.output !== null ? row.output : "";
             tr.appendChild(outputTd);
             
             tbody.appendChild(tr);
