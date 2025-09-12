@@ -336,9 +336,16 @@ class AlgorithmTracer {
         }
         
         const lines = algorithmText.split('\n');
-        const steps = [];
-        const variables = new Set();
-        const stepTargets = new Set();
+    
+        // Check ALL lines for tabs first (before any other processing)
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes('\t')) {
+                return {
+                    isValid: false,
+                    errors: [`Line ${i + 1}: use spaces instead of tabs`]
+                };
+            }
+        }
         
         // Check for blank lines
         for (let i = 0; i < lines.length; i++) {
@@ -349,6 +356,9 @@ class AlgorithmTracer {
                 };
             }
         }
+        const steps = [];
+        const variables = new Set();
+        const stepTargets = new Set();
         
         const nonEmptyLines = lines.filter(line => line.trim() !== '');
 
@@ -371,14 +381,6 @@ class AlgorithmTracer {
             // Skip indented lines (if block content) - they'll be validated separately
             if (line.trimStart() !== line) {
                 continue; // Skip indented lines
-            }
-
-            // Check for tabs
-            if (line.includes('\t')) {
-                return {
-                    isValid: false,
-                    errors: [`Line ${lineNum}: use spaces instead of tabs`]
-                };
             }
             
             // Check for common step format mistakes
