@@ -548,7 +548,7 @@ class AlgorithmTracer {
 
     executeStep() {
         // Check if we're executing an if block
-        if (this.isExecutingIfBlock && this.ifBlockCommands.length > 0) {
+        if (this.isExecutingIfBlock ) { // && this.ifBlockCommands.length > 0) {
             this.executeIfSubCommand();
             return;
         }
