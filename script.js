@@ -351,19 +351,28 @@ class AlgorithmTracer {
         }
         
         const nonEmptyLines = lines.filter(line => line.trim() !== '');
-        
+
         if (nonEmptyLines.length === 0) {
             return {
                 isValid: false,
                 errors: ["Algorithm must contain at least one step"]
             };
         }
-        
+
+        // Filter to only process step lines (not indented if-block content)
+        const stepLines = nonEmptyLines.filter(line => !line.startsWith(' ') && !line.startsWith('\t'));
+
         // Parse steps and basic validation
-        for (let i = 0; i < nonEmptyLines.length; i++) {
-            const line = nonEmptyLines[i];
-            const lineNum = i + 1;
+        for (let i = 0; i < stepLines.length; i++) {
+            const line = stepLines[i];
+            const originalLineNum = lines.indexOf(line) + 1; // Get original line number from full text
+            const lineNum = i + 1; // Sequential step number for validation
             
+            // Skip indented lines (if block content) - they'll be validated separately
+            if (line.trimStart() !== line) {
+                continue; // Skip indented lines
+            }
+
             // Check for tabs
             if (line.includes('\t')) {
                 return {
