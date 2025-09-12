@@ -356,7 +356,7 @@ class AlgorithmTracer {
         
         return null;
     }
-    
+
     findParentIfStep(lines, currentIndex) {
         // Look backwards to find the most recent step with if statement
         for (let i = currentIndex - 1; i >= 0; i--) {
@@ -1200,166 +1200,230 @@ class AlgorithmTracer {
 
     evaluateExpression(expr) {
         expr = expr.trim();
+        
+        // Step 1: Tokenize the expression properly
+        const tokens = this.tokenizeExpression(expr);
+        
+        // Step 2: Handle parentheses in the token stream
+        const processedTokens = this.processParentheses(tokens);
+        
+        // Step 3: Evaluate the processed tokens
+        return this.evaluateTokens(processedTokens);
+    }
 
-        // Handle parentheses by recursively evaluating sub-expressions
-        while (expr.includes('(')) {
-            let openIndex = -1;
-            let closeIndex = -1;
-            let depth = 0;
-            
-            // Find the innermost parentheses
-            for (let i = 0; i < expr.length; i++) {
-                if (expr[i] === '(') {
-                    if (depth === 0) openIndex = i;
-                    depth++;
-                } else if (expr[i] === ')') {
-                    depth--;
-                    if (depth === 0) {
-                        closeIndex = i;
-                        break;
-                    }
-                }
-            }
-            
-            if (openIndex === -1 || closeIndex === -1) {
-                throw new Error('Mismatched parentheses in expression');
-            }
-            
-            // Evaluate the sub-expression inside parentheses
-            const subExpr = expr.substring(openIndex + 1, closeIndex);
-            const subResult = this.evaluateExpression(subExpr);
-            
-            // Replace the parentheses and their content with the result
-            expr = expr.substring(0, openIndex) + subResult + expr.substring(closeIndex + 1);
-        }
-
+    tokenizeExpression(expr) {
         const tokens = [];
         let i = 0;
+        
         while (i < expr.length) {
-            let char = expr[i];
-
-            // Handle string literals
-            if (char === '"') {
-                let j = i + 1;
-                while (j < expr.length) {
-                    if (expr[j] === '"' && expr[j-1] !== '\\') { // Check for unescaped quote
-                        break;
-                    }
-                    j++;
-                }
-                if (j === expr.length) {
-                    throw new Error(`Unterminated string literal: ${expr.substring(i)}`);
-                }
-                tokens.push(expr.substring(i, j + 1));
-                i = j + 1;
-                continue;
-            }
-
-            // Handle operators
-            if (['+', '-', '*', '/', '%'].includes(char)) {
-                tokens.push(char);
-                i++;
-                continue;
-            }
-
-            // Handle whitespace
+            const char = expr[i];
+            
+            // Skip whitespace
             if (char === ' ') {
                 i++;
                 continue;
             }
-
-            // Handle numbers and variable names
+            
+            // Handle string literals - complete token
+            if (char === '"') {
+                let j = i + 1;
+                let value = '';
+                while (j < expr.length) {
+                    if (expr[j] === '"' && expr[j-1] !== '\\') {
+                        break;
+                    }
+                    if (expr[j] === '\\' && expr[j+1] === 'n') {
+                        value += '\n';
+                        j += 2;
+                    } else if (expr[j] === '\\' && expr[j+1] === '"') {
+                        value += '"';
+                        j += 2;
+                    } else {
+                        value += expr[j];
+                        j++;
+                    }
+                }
+                tokens.push({ type: 'STRING', value: value });
+                i = j + 1;
+                continue;
+            }
+            
+            // Handle operators
+            if (['+', '-', '*', '/', '%'].includes(char)) {
+                tokens.push({ type: 'OPERATOR', value: char });
+                i++;
+                continue;
+            }
+            
+            // Handle parentheses
+            if (char === '(' || char === ')') {
+                tokens.push({ type: 'PAREN', value: char });
+                i++;
+                continue;
+            }
+            
+            // Handle numbers and variables
             let j = i;
-            while (j < expr.length && !['"', '+', '-', '*', '/', '%', ' '].includes(expr[j])) {
+            while (j < expr.length && 
+                !['"', '+', '-', '*', '/', '%', '(', ')', ' '].includes(expr[j])) {
                 j++;
             }
-            tokens.push(expr.substring(i, j));
+            
+            const token = expr.substring(i, j);
+            const num = parseInt(token);
+            
+            if (!isNaN(num)) {
+                tokens.push({ type: 'NUMBER', value: num });
+            } else {
+                tokens.push({ type: 'VARIABLE', value: token });
+            }
+            
             i = j;
         }
+        
+        return tokens;
+    }
 
-        // Evaluate tokens (simple left-to-right evaluation)
-        if (tokens.length === 0) return "";
-
-        let result = this.getLiteralValue(tokens[0]);
-
-        for (let k = 1; k < tokens.length; k++) {
-            const operator = tokens[k];
-            if (['+', '-', '*', '/', '%'].includes(operator)) {
-                if (k + 1 < tokens.length) {
-                    const nextOperand = this.getLiteralValue(tokens[k + 1]);
-                    
-                    switch (operator) {
-                        case '+':
-                            if (typeof result === 'string' || typeof nextOperand === 'string') {
-                                result = String(result) + String(nextOperand);
-                            } else {
-                                result = result + nextOperand;
-                            }
-                            break;
-                        case '-':
-                            if (typeof result === 'number' && typeof nextOperand === 'number') {
-                                result = result - nextOperand;
-                            } else {
-                                throw new Error('Subtraction only works with numbers');
-                            }
-                            break;
-                        case '*':
-                            if (typeof result === 'number' && typeof nextOperand === 'number') {
-                                result = result * nextOperand;
-                            } else {
-                                throw new Error('Multiplication only works with numbers');
-                            }
-                            break;
-                        case '/':
-                            if (typeof result === 'number' && typeof nextOperand === 'number') {
-                                if (nextOperand === 0) {
-                                    throw new Error('Division by zero');
-                                }
-                                result = Math.floor(result / nextOperand); // Integer division
-                            } else {
-                                throw new Error('Division only works with numbers');
-                            }
-                            break;
-                        case '%':
-                            if (typeof result === 'number' && typeof nextOperand === 'number') {
-                                result = result % nextOperand;
-                            } else {
-                                throw new Error('Modulo only works with numbers');
-                            }
-                            break;
-                    }
-                    k++; // Skip the operand as it's already processed
-                } else {
-                    throw new Error(`Invalid expression: dangling ${operator} operator`);
+    processParentheses(tokens) {
+        // Find innermost parentheses and recursively evaluate
+        while (this.hasParentheses(tokens)) {
+            let start = -1, end = -1, depth = 0;
+            
+            // Find innermost parentheses
+            for (let i = 0; i < tokens.length; i++) {
+                if (tokens[i].type === 'PAREN' && tokens[i].value === '(') {
+                    start = i;
+                    depth = 1;
+                } else if (tokens[i].type === 'PAREN' && tokens[i].value === ')' && depth > 0) {
+                    end = i;
+                    break;
                 }
-            } else {
-                throw new Error(`Unsupported operator in complex expression: ${operator}`);
+            }
+            
+            if (start === -1 || end === -1) break;
+            
+            // Extract sub-expression tokens
+            const subTokens = tokens.slice(start + 1, end);
+            const result = this.evaluateTokens(subTokens);
+            
+            // Replace parentheses section with result
+            const resultToken = typeof result === 'string' ? 
+                { type: 'STRING', value: result } : 
+                { type: 'NUMBER', value: result };
+                
+            tokens.splice(start, end - start + 1, resultToken);
+        }
+        
+        return tokens;
+    }
+
+    evaluateTokens(tokens) {
+        if (tokens.length === 0) return "";
+        if (tokens.length === 1) return this.getTokenValue(tokens[0]);
+        
+        let result = this.getTokenValue(tokens[0]);
+        
+        for (let i = 1; i < tokens.length; i += 2) {
+            const operator = tokens[i];
+            const operand = tokens[i + 1];
+            
+            if (!operator || !operand) break;
+            if (operator.type !== 'OPERATOR') {
+                throw new Error(`Expected operator, got ${operator.type}`);
+            }
+            
+            const rightValue = this.getTokenValue(operand);
+            
+           switch (operator.value) {
+                case '+':
+                    if (typeof result === 'string' || typeof rightValue === 'string') {
+                        result = String(result) + String(rightValue);
+                    } else {
+                        result = result + rightValue;
+                    }
+                    break;
+                case '-':
+                    if (typeof result === 'number' && typeof rightValue === 'number') {
+                        result = result - rightValue;
+                    } else {
+                        throw new Error('Subtraction only works with numbers');
+                    }
+                    break;
+                case '*':
+                    if (typeof result === 'number' && typeof rightValue === 'number') {
+                        result = result * rightValue;
+                    } else {
+                        throw new Error('Multiplication only works with numbers');
+                    }
+                    break;
+                case '/':
+                    if (typeof result === 'number' && typeof rightValue === 'number') {
+                        if (rightValue === 0) {
+                            throw new Error('Division by zero');
+                        }
+                        result = Math.floor(result / rightValue); // Integer division
+                    } else {
+                        throw new Error('Division only works with numbers');
+                    }
+                    break;
+                case '%':
+                    if (typeof result === 'number' && typeof rightValue === 'number') {
+                        if (rightValue === 0) {
+                            throw new Error('Modulo by zero');
+                        }
+                        result = result % rightValue;
+                    } else {
+                        throw new Error('Modulo only works with numbers');
+                    }
+                    break;
+                default:
+                    throw new Error(`Unknown operator: ${operator.value}`);
             }
         }
+        
         return result;
     }
 
-    getLiteralValue(token) {
-        token = token.trim();
-        // Handle string literals
-        if (token.startsWith('"') && token.endsWith('"')) {
-            // Remove quotes and handle escaped newlines
-            let value = token.substring(1, token.length - 1);
-            value = value.replace(/\\n/g, '\n');
-            value = value.replace(/\\"/g, '"'); // Handle escaped double quotes
-            return value;
+    getTokenValue(token) {
+        switch (token.type) {
+            case 'STRING':
+            case 'NUMBER':
+                return token.value;
+            case 'VARIABLE':
+                if (this.variables.has(token.value)) {
+                    return this.variables.get(token.value);
+                }
+                throw new Error(`Unknown variable: ${token.value}`);
+            default:
+                throw new Error(`Cannot get value of token type: ${token.type}`);
         }
-        // Handle numeric literals
-        const num = parseInt(token);
-        if (!isNaN(num)) {
-            return num;
-        }
-        // Handle variable references
-        if (this.variables.has(token)) {
-            return this.variables.get(token);
-        }
-        throw new Error(`Unknown token or variable: ${token}`);
     }
+
+    hasParentheses(tokens) {
+        return tokens.some(token => token.type === 'PAREN');
+    }
+
+    // getLiteralValue(token) {
+    //     token = token.trim();
+    //     // Handle string literals
+    //     if (token.startsWith('"') && token.endsWith('"')) {
+    //         // Remove quotes and handle escaped newlines
+    //         let value = token.substring(1, token.length - 1);
+    //         value = value.replace(/\\n/g, '\n');
+    //         value = value.replace(/\\"/g, '"'); // Handle escaped double quotes
+    //         return value;
+    //     }
+    //     // Handle numeric literals
+    //     const num = parseInt(token);
+    //     if (!isNaN(num)) {
+    //         return num;
+    //     }
+    //     // Handle variable references
+    //     if (this.variables.has(token)) {
+    //         return this.variables.get(token);
+    //     }
+    //     throw new Error(`Unknown token or variable: ${token}`);
+    // }
 
     submitInput() {
         if (!this.isWaitingForInput) return;
