@@ -88,7 +88,7 @@ class AlgorithmTracer {
                 // This means it's either orphaned or there's a parsing issue
                 throw new Error(`Unexpected indented line at line ${i + 1}: ${line.trim()}`);
             }
-            
+
             const stepMatch = trimmedLine.match(/^step-(\d+):\s*(.+)$/);
             
             if (!stepMatch) {
@@ -297,6 +297,326 @@ class AlgorithmTracer {
         return "unknown";
     }
 
+    isValidVariableName(name) {
+        // PascalCase: starts with uppercase letter, followed by letters/numbers
+        return /^[A-Z][a-zA-Z0-9]*$/.test(name);
+    }
+
+    checkMissingSpaceAfterKeyword(content, stepNumber) {
+        const keywords = ['print', 'read', 'goto', 'if'];
+        
+        for (const keyword of keywords) {
+            if (content.startsWith(keyword) && content.length > keyword.length && content[keyword.length] !== ' ') {
+                return `In step-${stepNumber}, after ${keyword} keyword, a space must be given, before the argument.`;
+            }
+        }
+        return null; // No error found
+    }
+
+    checkGotoMistakes(content, stepNumber) {
+        if (content.startsWith('go to ')) {
+            return `In step-${stepNumber}, use 'goto' instead of 'go to'.`;
+        }
+        
+        const gotoStepMatch = content.match(/^goto step (\d+)$/);
+        if (gotoStepMatch) {
+            const stepNum = gotoStepMatch[1];
+            return `In step-${stepNumber}, use 'goto step-${stepNum}' instead of 'goto step ${stepNum}' (missing hyphen).`;
+        }
+        
+        return null; // No error found
+    }
+
+    validateAlgorithm(algorithmText) {
+        if (!algorithmText || algorithmText.trim() === '') {
+            return {
+                isValid: false,
+                errors: ["Algorithm cannot be empty"]
+            };
+        }
+        
+        const lines = algorithmText.split('\n');
+        const steps = [];
+        const variables = new Set();
+        const stepTargets = new Set();
+        
+        // Check for blank lines
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].trim() === '') {
+                return {
+                    isValid: false,
+                    errors: [`Line ${i + 1}: No blank lines allowed between steps`]
+                };
+            }
+        }
+        
+        const nonEmptyLines = lines.filter(line => line.trim() !== '');
+        
+        if (nonEmptyLines.length === 0) {
+            return {
+                isValid: false,
+                errors: ["Algorithm must contain at least one step"]
+            };
+        }
+        
+        // Parse steps and basic validation
+        for (let i = 0; i < nonEmptyLines.length; i++) {
+            const line = nonEmptyLines[i];
+            const lineNum = i + 1;
+            
+            // Check for tabs
+            if (line.includes('\t')) {
+                return {
+                    isValid: false,
+                    errors: [`Line ${lineNum}: use spaces instead of tabs`]
+                };
+            }
+            
+            // Check for common step format mistakes
+            if (line.trim().match(/^Step-\d+:/)) {
+                return {
+                    isValid: false,
+                    errors: [`Line ${lineNum}: The format to write step is "step-N: " (use lowercase 'step')`]
+                };
+            }
+
+            if (line.trim().match(/^Step \d+:-/)) {
+                return {
+                    isValid: false,
+                    errors: [`Line ${lineNum}: The format to write step is "step-N: " (use lowercase 'step', hyphen after 'step', colon after number)`]
+                };
+            }
+
+            if (line.trim().match(/^step \d+:/)) {
+                return {
+                    isValid: false,
+                    errors: [`Line ${lineNum}: The format to write step is "step-N: " (use hyphen between 'step' and number)`]
+                };
+            }
+
+            const missingSpaceMatch = line.trim().match(/^step-(\d+):([^ ])/);
+            if (missingSpaceMatch) {
+                const stepNum = missingSpaceMatch[1];
+                return {
+                    isValid: false,
+                    errors: [`Line ${lineNum}: The format to write step is "step-${stepNum}: " (missing space after colon)`]
+                };
+            }
+        
+            const stepMatch = line.match(/^(\s*)step-(\d+):\s*(.+)$/);
+            if (!stepMatch) {
+                return {
+                    isValid: false,
+                    errors: [`Line ${lineNum}: Invalid step format`]
+                };
+            }
+            
+            const indentation = stepMatch[1].length;
+            const stepNumber = parseInt(stepMatch[2]);
+            const content = stepMatch[3];
+            
+            // Validate step number sequence
+            if (stepNumber !== i + 1) {
+                return {
+                    isValid: false,
+                    errors: [`Line ${lineNum}: Step numbers must be sequential (expected step-${i + 1})`]
+                };
+            }
+            
+            if (stepNumber > 99) {
+                return {
+                    isValid: false,
+                    errors: [`Line ${lineNum}: Maximum step number is 99`]
+                };
+            }
+            
+            stepTargets.add(stepNumber);
+            
+            steps.push({
+                lineNum,
+                stepNumber,
+                indentation,
+                content,
+                originalLine: line
+            });
+        }
+        
+        // Check first and last statements
+        if (steps.length > 0) {
+            if (!steps[0].content.trim().startsWith('start')) {
+                return {
+                    isValid: false,
+                    errors: [`step-1: First statement must be 'start'`]
+                };
+            }
+            
+            if (!steps[steps.length - 1].content.trim().startsWith('stop')) {
+                return {
+                    isValid: false,
+                    errors: [`step-${steps.length}: Last statement must be 'stop'`]
+                };
+            }
+            
+            // Check no statements after stop
+            const stopIndex = steps.findIndex(step => step.content.trim().startsWith('stop'));
+            if (stopIndex !== -1 && stopIndex < steps.length - 1) {
+                return {
+                    isValid: false,
+                    errors: [`step-${stopIndex + 2}: No statements allowed after 'stop'`]
+                };
+            }
+        }
+        
+        // Validate each step content and indentation
+        let ifNestingLevel = 0;
+        
+        for (let i = 0; i < steps.length; i++) {
+            const step = steps[i];
+            const content = step.content.trim();
+            
+            // Validate indentation for top-level steps
+            if (step.indentation !== 0) {
+                return {
+                    isValid: false,
+                    errors: [`Line ${step.lineNum}: Top-level steps must not be indented`]
+                };
+            }
+            
+            // Check for missing space after keywords
+            const missingSpaceResult = this.checkMissingSpaceAfterKeyword(content, step.stepNumber);
+            if (missingSpaceResult) {
+                return {
+                    isValid: false,
+                    errors: [missingSpaceResult]
+                };
+            }
+
+            // Check for goto mistakes
+            const gotoMistakeResult = this.checkGotoMistakes(content, step.stepNumber);
+            if (gotoMistakeResult) {
+                return {
+                    isValid: false,
+                    errors: [gotoMistakeResult]
+                };
+            }
+
+            // Validate keywords and syntax
+            if (content.startsWith('start') || content.startsWith('stop')) {
+                if (content !== 'start' && content !== 'stop') {
+                    return {
+                        isValid: false,
+                        errors: [`Line ${step.lineNum}: '${content.split(' ')[0]}' takes no arguments`]
+                    };
+                }
+            } else if (content.startsWith('read ')) {
+                const varName = content.substring(5).trim();
+                if (!this.isValidVariableName(varName)) {
+                    return {
+                        isValid: false,
+                        errors: [`Line ${step.lineNum}: Invalid variable name '${varName}' (must be PascalCase)`]
+                    };
+                }
+                if (varName.length > 42) {
+                    return {
+                        isValid: false,
+                        errors: [`Line ${step.lineNum}: Variable name '${varName}' exceeds 42 character limit`]
+                    };
+                }
+                variables.add(varName);
+            } else if (content.startsWith('print ')) {
+                const printContent = content.substring(6).trim();
+                if (printContent === '') {
+                    return {
+                        isValid: false,
+                        errors: [`Line ${step.lineNum}: print statement requires an argument`]
+                    };
+                }
+            } else if (content.startsWith('goto ')) {
+                const gotoTarget = content.substring(5).trim();
+                const targetMatch = gotoTarget.match(/^step-(\d+)$/);
+                if (!targetMatch) {
+                    return {
+                        isValid: false,
+                        errors: [`Line ${step.lineNum}: Invalid goto target format '${gotoTarget}'`]
+                    };
+                }
+            } else if (content.startsWith('if ')) {
+                if (!content.includes('(') || !content.includes(')') || !content.endsWith(':')) {
+                    return {
+                        isValid: false,
+                        errors: [`Line ${step.lineNum}: if statement must have format 'if (condition):'`]
+                    };
+                }
+                ifNestingLevel++;
+                
+                if (ifNestingLevel > 2) {
+                    return {
+                        isValid: false,
+                        errors: [`Line ${step.lineNum}: Maximum nesting level exceeded (single-level nested if only)`]
+                    };
+                }
+            } else if (content.includes('=') && !content.includes('==') && !content.includes('!=') && !content.includes('<=') && !content.includes('>=')) {
+                // Assignment statement
+                const parts = content.split('=');
+                if (parts.length !== 2) {
+                    return {
+                        isValid: false,
+                        errors: [`Line ${step.lineNum}: Invalid assignment format`]
+                    };
+                }
+                const varName = parts[0].trim();
+                if (!this.isValidVariableName(varName)) {
+                    return {
+                        isValid: false,
+                        errors: [`Line ${step.lineNum}: Invalid variable name '${varName}' (must be PascalCase)`]
+                    };
+                }
+                if (varName.length > 42) {
+                    return {
+                        isValid: false,
+                        errors: [`Line ${step.lineNum}: Variable name '${varName}' exceeds 42 character limit`]
+                    };
+                }
+                variables.add(varName);
+            } else {
+                return {
+                    isValid: false,
+                    errors: [`Line ${step.lineNum}: Unknown statement type`]
+                };
+            }
+        }
+        
+        // Check variable limit
+        if (variables.size > 6) {
+            return {
+                isValid: false,
+                errors: [`Maximum 6 variables allowed (found ${variables.size})`]
+            };
+        }
+        
+        // Validate goto targets exist
+        for (const step of steps) {
+            if (step.content.startsWith('goto ')) {
+                const gotoTarget = step.content.substring(5).trim();
+                const targetMatch = gotoTarget.match(/^step-(\d+)$/);
+                if (targetMatch) {
+                    const targetNum = parseInt(targetMatch[1]);
+                    if (!stepTargets.has(targetNum)) {
+                        return {
+                            isValid: false,
+                            errors: [`Line ${step.lineNum}: goto target '${gotoTarget}' does not exist`]
+                        };
+                    }
+                }
+            }
+        }
+        
+        return {
+            isValid: true,
+            errors: []
+        };
+    }
+
     startTracing() {
         try {
             const algorithmText = this.algorithmInput.value.trim();
@@ -305,6 +625,11 @@ class AlgorithmTracer {
                 return;
             }
             
+            const validation = this.validateAlgorithm(algorithmText);
+            if (!validation.isValid) {
+                this.showError(validation.errors.join("\n"));
+                return;
+            }
             const parsed = this.parseAlgorithm(algorithmText);
             this.algorithm = parsed.algorithm;
             this.variableColumns = new Set(parsed.variables);
