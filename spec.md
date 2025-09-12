@@ -192,3 +192,30 @@ Done!
 - Division by zero: Show error message
 - Invalid goto target: Show error message
 - Non-integer in comparison: Show error message
+
+### Language Related (in syntax_rules.md file)
+#### Core Structure
+
+6 keywords, 99 steps max, sequential numbering.  
+Single-level nested if only, one statement per line. 
+Strict indentation rules (10/11 spaces for if, 12/13 for nested).  
+
+#### Variables & Data
+
+Max 6 variables, all global, strict typing (Int stays Int, String stays String).  
+Case-sensitive names, 42 char limit.  
+Only \n escape sequence supported.  
+
+#### Expressions & Control
+
+Max 10 operators, max 3 parentheses depth.  
+No type mixing in comparisons, left-to-right evaluation.  
+Goto can jump OUT of if blocks but not INTO them. 
+
+#### Validation Scope
+
+Check goto targets exist, catch undefined variables immediately. 
+No comments, no blank lines, no statements after stop. 
+Simple error messages only. 
+
+**Implementation Impact**: With these comprehensive constraints, building a validator becomes almost mechanical - just check each rule systematically. The specification covers virtually every edge case!
