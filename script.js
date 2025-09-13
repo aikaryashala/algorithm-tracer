@@ -638,17 +638,6 @@ class AlgorithmTracer {
                         errors: [ifValidationResult]
                     };
                 }
-                
-                if (ifValidationResult === 'VALID_IF') {
-                    ifNestingLevel++;
-                    
-                    if (ifNestingLevel > 2) {
-                        return {
-                            isValid: false,
-                            errors: [`Line ${step.lineNum}: Maximum nesting level exceeded (single-level nested if only)`]
-                        };
-                    }
-                }
             } else if (content.includes('=') && !content.includes('==') && !content.includes('!=') && !content.includes('<=') && !content.includes('>=')) {
                 // Assignment statement
                 const parts = content.split('=');
