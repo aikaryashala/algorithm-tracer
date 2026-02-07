@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Algorithm Tracer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -22,6 +25,60 @@ step-1: start
 step-2: print &quot;Hello World!&quot;
 step-3: stop"></textarea>
                 <button id="start-trace-btn" class="btn primary">Start Tracing</button>
+            </div>
+
+            <div class="examples-section">
+                <h3>Examples <span class="examples-hint">(click to load)</span></h3>
+                <div class="examples-grid">
+                    <div class="example-card" data-example="hello-world">
+                        <h4>Welcome Program</h4>
+                        <pre>step-1: start
+step-2: print "Welcome to AI Karyashala Bootcamp!\n"
+step-3: stop</pre>
+                    </div>
+                    <div class="example-card" data-example="sum-of-two">
+                        <h4>Sum of Two Numbers</h4>
+                        <pre>step-1: start
+step-2: print "To add two numbers.\n"
+step-3: print "Enter the first number: "
+step-4: read Num1
+step-5: print "Enter the second number: "
+step-6: read Num2
+step-7: Sum = Num1 + Num2
+step-8: print "The sum of " + Num1 + " and " + Num2 + " is " + Sum + ".\n"
+step-9: stop</pre>
+                    </div>
+                    <div class="example-card" data-example="find-max">
+                        <h4>Print N Natural Numbers</h4>
+                        <pre>step-1: start
+step-2: print "How many natural numbers you want to print? "
+step-3: read NumCount
+step-4: Count = 1
+step-5: print "The first " + NumCount + " natural numbers are "
+step-6: if (Count < NumCount):
+          print Count + ", "
+          Count = Count + 1
+          goto step-6
+step-7: print Count + ".\n"
+step-8: stop</pre>
+                    </div>
+                    <div class="example-card" data-example="countdown">
+                        <h4>Print working</h4>
+                        <pre>step-1: start
+step-2: Num1 = 2
+step-3: Num2 = 3
+step-4: Sum = Num1 + Num2
+step-5: print "The sum of" + Num1 + "and" + Num2 + "is" + Sum + ".\n"
+step-6: print "The sum of" + Num1 + " and " + Num2 + " is " + Sum + ".\n"
+step-7: print "The sum of " + Num1 + "and " + Num2 + " is " + Sum + ".\n"
+step-8: print "The sum of " + Num1 + " and" + Num2 + " is " + Sum + ".\n"
+step-9: print "The sum of " + Num1 + " and " + Num2 + "is " + Sum + ".\n"
+step-10: print "The sum of " + Num1 + " and " + Num2 + " is" + Sum + ".\n"
+step-11: print "The sum of" + Num1 + "and" + Num2 + "is" + Sum + ".\n"
+step-12: print "The sum of"+Num1+"and"+Num2+"is"+Sum+".\n"
+step-13: stop</pre>
+                    </div>
+                </div>
             </div>
         </div>
 

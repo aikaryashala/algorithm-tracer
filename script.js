@@ -57,6 +57,13 @@ class AlgorithmTracer {
             if (e.key === "Enter") this.submitInput();
         });
         
+        // Example cards
+        document.querySelectorAll(".example-card").forEach(card => {
+            card.addEventListener("click", () => {
+                this.algorithmInput.value = card.querySelector("pre").textContent;
+            });
+        });
+
         // Error display close
         document.querySelector(".error-close").addEventListener("click", () => {
             this.errorDisplay.style.display = "none";

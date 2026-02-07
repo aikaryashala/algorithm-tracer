@@ -60,15 +60,81 @@ header h1 {
     padding: 15px;
     border: 2px solid #ddd;
     border-radius: 5px;
-    font-family: 'Courier New', 'Monaco', 'Consolas', 'Liberation Mono', 'Lucida Console', monospace;
-    font-size: 14px;
+    font-family: 'JetBrains Mono', 'Courier New', 'Monaco', 'Consolas', monospace;
+    font-size: 20px;
+    font-weight: 600;
     resize: vertical;
     margin-bottom: 20px;
+    color: #111111;
 }
 
 #algorithm-input:focus {
     outline: none;
     border-color: #3498db;
+}
+
+/* Examples Section */
+.examples-section {
+    max-width: 800px;
+    margin: 30px auto 0;
+}
+
+.examples-section h3 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.examples-hint {
+    font-weight: 300;
+    font-size: 0.8em;
+    color: #7f8c8d;
+}
+
+.examples-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.example-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.example-card:hover {
+    border-color: #3498db;
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+    transform: translateY(-2px);
+}
+
+.example-card h4 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-size: 0.95em;
+}
+
+.example-card pre {
+    background: #f8f9fa;
+    border-radius: 5px;
+    padding: 10px;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 12px;
+    color: #0f172a;
+    overflow-x: auto;
+    white-space: pre;
+    margin: 0;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .examples-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Execution Screen */
@@ -112,7 +178,7 @@ header h1 {
     border-radius: 5px;
     padding: 15px;
     overflow-y: auto;
-    font-family: 'Courier New', 'Monaco', 'Consolas', 'Liberation Mono', 'Lucida Console', monospace;
+    font-family: 'JetBrains Mono', 'Courier New', 'Monaco', 'Consolas', monospace;
     font-size: 14px;
 }
 
@@ -121,7 +187,8 @@ header h1 {
     margin: 2px 0;
     border-radius: 3px;
     white-space: pre;  /* Changed from pre-wrap to pre to preserve exact spacing */
-    font-family: 'Courier New', 'Monaco', 'Consolas', 'Liberation Mono', 'Lucida Console', monospace;
+    font-family: 'JetBrains Mono', 'Courier New', 'Monaco', 'Consolas', monospace;
+    color: #0f172a;
 }
 
 .code-line.current {
@@ -157,7 +224,7 @@ header h1 {
     width: 100%;
     border-collapse: collapse;
     font-size: 14px;
-    font-family: 'Courier New', 'Monaco', 'Consolas', 'Liberation Mono', 'Lucida Console', monospace;
+    font-family: 'JetBrains Mono', 'Courier New', 'Monaco', 'Consolas', monospace;
 }
 
 #trace-table th {
@@ -201,7 +268,7 @@ header h1 {
     color: #ecf0f1;
     padding: 15px;
     border-radius: 5px;
-    font-family: 'Courier New', 'Monaco', 'Consolas', 'Liberation Mono', 'Lucida Console', monospace;
+    font-family: 'JetBrains Mono', 'Courier New', 'Monaco', 'Consolas', monospace;
     font-size: 14px;
     height: 150px; /* Fixed height */
     overflow-y: auto;
@@ -229,7 +296,7 @@ header h1 {
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 3px;
-    font-family: 'Courier New', 'Monaco', 'Consolas', 'Liberation Mono', 'Lucida Console', monospace;
+    font-family: 'JetBrains Mono', 'Courier New', 'Monaco', 'Consolas', monospace;
 }
 
 .console-input:focus {
